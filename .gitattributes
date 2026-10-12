@@ -1,0 +1,16 @@
+# Normalize line endings; shell hooks must stay LF, Windows batch files CRLF.
+* text=auto
+*.sh text eol=lf
+website/.husky/** text eol=lf
+*.bat text eol=crlf
+
+# Treat binary assets as binary (no EOL conversion, no diff noise).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.wav binary
+*.woff binary
+*.woff2 binary

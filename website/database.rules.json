@@ -1,0 +1,104 @@
+{
+  "rules": {
+    "notenarchiv": {
+      "ratings": {
+        ".read": "auth != null",
+        "$songId": {
+          "$personId": {
+            ".write": "auth != null && root.child('notenarchiv/users/' + auth.uid + '/personId').val() === $personId",
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 5 && newData.val() % 1 === 0"
+          }
+        }
+      },
+      "media": {
+        ".read": "auth != null",
+        "$songId": {
+          ".write": "auth != null",
+          ".validate": "newData.hasChildren(['videoId', 'start'])",
+          "videoId": {
+            ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{11}$/)"
+          },
+          "start": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      },
+      "likes": {
+        ".read": "auth != null",
+        "$songId": {
+          "$personId": {
+            ".write": "auth != null && root.child('notenarchiv/users/' + auth.uid + '/personId').val() === $personId",
+            ".validate": "newData.val() === true"
+          }
+        }
+      },
+      "saved": {
+        ".read": "auth != null",
+        "$songId": {
+          "$personId": {
+            ".write": "auth != null && root.child('notenarchiv/users/' + auth.uid + '/personId').val() === $personId",
+            ".validate": "newData.val() === true"
+          }
+        }
+      },
+      "comments": {
+        ".read": "auth != null",
+        "$songId": {
+          "$commentId": {
+            ".write": "auth != null && ((!data.exists() && newData.child('person').val() === root.child('notenarchiv/users/' + auth.uid + '/personId').val()) || (data.exists() && !newData.exists() && data.child('person').val() === root.child('notenarchiv/users/' + auth.uid + '/personId').val()))",
+            ".validate": "newData.hasChildren(['person', 'name', 'text', 'at'])",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length <= 81"
+            },
+            "person": {
+              ".validate": "newData.isString()"
+            },
+            "text": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 500"
+            },
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() <= now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
+      },
+      "views": {
+        ".read": "auth != null",
+        "$songId": {
+          "$personId": {
+            ".write": "auth != null && root.child('notenarchiv/users/' + auth.uid + '/personId').val() === $personId",
+            ".validate": "newData.val() === true"
+          }
+        }
+      },
+      "users": {
+        ".read": "auth != null",
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.hasChildren(['firstName', 'lastName', 'personId', 'at'])",
+          "firstName": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+          },
+          "lastName": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+          },
+          "personId": {
+            ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9-]{3,100}$/)"
+          },
+          "at": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    }
+  }
+}

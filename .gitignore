@@ -1,0 +1,32 @@
+# General
+*.log
+*.claude
+CLAUDE.md
+
+# Python
+__pycache__/
+*.pyc
+
+# Rust
+website/tools/excel-report-rs/target
+
+# website
+website/node_modules
+website/.next
+website/out
+website/build
+website/dist
+website/dist-app
+website/electron/bin
+website/.env*.local
+website/.env
+website/.vercel
+website/.DS_Store
+website/*.log
+website/*.tsbuildinfo
+website/next-env.d.ts
+website/docs/api
+website/.lighthouseci
+
+# other
+game_instructions

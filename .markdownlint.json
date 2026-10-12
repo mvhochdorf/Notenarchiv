@@ -1,0 +1,6 @@
+{
+  "comment": "Prettier owns Markdown formatting (incl. table alignment); disable rules that conflict with it.",
+  "default": true,
+  "MD013": false,
+  "MD060": false
+}
