@@ -36,6 +36,15 @@ const TARGET = fileURLToPath(
   new URL("../src/data/youtube.json", import.meta.url),
 );
 
+/**
+ * Marks links the club entered itself; no search ever replaces them.
+ *
+ * @remarks
+ * Put it at the end of the `label` when adding a link to youtube.json by
+ * hand.
+ */
+const BY_HAND = "(vom Verein eingetragen)";
+
 /** Marks pieces that were searched without success. */
 const NOT_FOUND = "nicht gefunden";
 
@@ -57,6 +66,32 @@ const WEIGHT_BAND = 1.5;
 const WEIGHT_NOT_BAND = -1.5;
 const WEIGHT_RANK = 0.05;
 const RANKS_WEIGHTED = 10;
+
+/**
+ * Surnames of the club's own arrangers, as normalized words.
+ *
+ * @remarks
+ * Their arrangements are not on YouTube, so searching for the name only
+ * finds nothing - the search goes by title and band music instead. Add a
+ * name here when another member arranges for the club.
+ */
+const INTERNAL_NAMES = ["eberspacher"];
+
+/**
+ * How a title from the spreadsheet is spelled on YouTube.
+ *
+ * @remarks
+ * The spreadsheet stays as it is; these only fix the search for titles
+ * spelled differently there. Add a line when a piece is not found because
+ * of its spelling.
+ */
+const SEARCH_SPELLINGS: Readonly<Record<string, string>> = {
+  "Radetzki Marsch": "Radetzky Marsch",
+  "Trumpet Volontary": "Trumpet Voluntary",
+  "A Medival Christmas": "A Medieval Christmas",
+  "Ad honorem Die - Prozessionsmarsch": "Ad honorem Dei",
+  "Mährischer Tanz No. 4": "Mährischer Tanz Nr. 4",
+};
 
 /** Shortest name part that is matched. */
 const MIN_NAME_LENGTH = 4;
@@ -133,6 +168,7 @@ const BAD_WORDS = [
   "backing track",
   "sheet music",
   "noten",
+  "trailer",
 ];
 
 /** Spaces in JSON output. */
@@ -168,7 +204,10 @@ async function main(): Promise<void> {
       return (
         entry === undefined ||
         (retry && !("videoId" in entry)) ||
-        (upgrade && "videoId" in entry && !isBandLabel(entry.label ?? ""))
+        (upgrade &&
+          "videoId" in entry &&
+          !isBandLabel(entry.label ?? "") &&
+          !(entry.label ?? "").includes(BY_HAND))
       );
     })
     .slice(0, limit);
@@ -215,12 +254,28 @@ function isBandLabel(text: string): boolean {
   return BAND_WORDS.some((word) => words.includes(` ${word}`));
 }
 
-/** Searches by composer or arranger and as band music, keeps the best. */
+/**
+ * Searches by composer or arranger and as band music, keeps the best.
+ *
+ * @remarks
+ * Pieces searched again with `--retry` get more searches: composer and
+ * arranger separately, "Blasmusik", and the bare title.
+ */
 async function findVideo(song: Song): Promise<Result | null> {
   const title = searchTitle(song.title);
-  const person = surname(song.arranger) ?? surname(song.composer) ?? "";
+  const arranger = publicSurname(song.arranger);
+  const composer = publicSurname(song.composer);
   const kind = song.genre === "Choral" ? "Posaunenchor" : "Blasorchester";
-  const queries = [`${title} ${person}`.trim(), `${title} ${kind}`];
+  const wanted = retry
+    ? [
+        `${title} ${composer ?? ""}`,
+        `${title} ${arranger ?? ""}`,
+        `${title} ${kind}`,
+        `${title} Blasmusik`,
+        title,
+      ]
+    : [`${title} ${arranger ?? composer ?? ""}`, `${title} ${kind}`];
+  const queries = [...new Set(wanted.map((query) => query.trim()))];
 
   const results: Result[] = [];
   for (const query of queries) {
@@ -241,7 +296,12 @@ function pick(song: Song, results: readonly Result[]): Result | null {
     .filter((word) => word.length > 1);
   const names = [song.composer, song.arranger]
     .flatMap((name) => normalize(name ?? "").split(" "))
-    .filter((part) => part.length >= MIN_NAME_LENGTH && part !== "div");
+    .filter(
+      (part) =>
+        part.length >= MIN_NAME_LENGTH &&
+        part !== "div" &&
+        !INTERNAL_NAMES.includes(part),
+    );
   const publisher = normalize(song.publisher ?? "")
     .split(" ")
     .filter((part) => part.length >= MIN_NAME_LENGTH);
@@ -333,11 +393,20 @@ function toSeconds(length: string): number {
 
 /** The title without notes like `(tour)` or ` - Prozessionsmarsch`. */
 function searchTitle(title: string): string {
-  return title
+  return (SEARCH_SPELLINGS[title] ?? title)
     .replace(/\(.*?\)/g, " ")
+    .replace(/\bA\d\s*-?\s*Format\b/gi, " ")
     .replace(/\s-\s.*$/, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** A surname worth searching for: none for the club's own arrangers. */
+function publicSurname(name: string | null): string | null {
+  const found = surname(name);
+  return found !== null && INTERNAL_NAMES.includes(normalize(found))
+    ? null
+    : found;
 }
 
 /** Last name of `W.Löffler`, `Philip Sparke` or `Anderson/Ulvaeus`. */

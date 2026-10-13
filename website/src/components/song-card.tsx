@@ -9,12 +9,7 @@
 import { useState, type ReactElement } from "react";
 import { mark, rate } from "@/lib/archive-store";
 import { genreHue } from "@/lib/genre-color";
-import {
-  searchUrl,
-  thumbnailUrl,
-  watchUrl,
-  type FixedMedia,
-} from "@/lib/media";
+import { searchUrl, thumbnailUrl, type FixedMedia } from "@/lib/media";
 import type { RatingSummary } from "@/lib/ratings";
 import type { Song } from "@/lib/song";
 import { Icon, type IconName } from "./icons";
@@ -93,7 +88,7 @@ export function SongCard({
 
   return (
     <article
-      className="relative flex h-full snap-start snap-always flex-col overflow-hidden"
+      className="relative flex h-full snap-start snap-always flex-col overflow-hidden select-none"
       style={{
         background: `radial-gradient(circle at 30% 20%, hsl(${hue} 70% 32%), hsl(${hue} 60% 10%) 60%, #000)`,
       }}
@@ -130,10 +125,11 @@ export function SongCard({
       {/* Shade behind the filter bar, so it stays readable on any video. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/60 to-transparent" />
 
-      {/* Info and buttons lie over the video; the empty parts let taps
-          through to it, so tapping anywhere pauses. */}
+      {/* Info and buttons lie over the video. Everything but the stars and
+          the buttons lets taps through to it - tapping the title pauses,
+          double tapping it likes, as anywhere else on the video. */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end gap-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-4 pt-24 pb-12">
-        <div className="pointer-events-auto min-w-0 flex-1 space-y-2 [text-shadow:0_1px_4px_rgb(0_0_0/0.8)]">
+        <div className="min-w-0 flex-1 space-y-2 [text-shadow:0_1px_4px_rgb(0_0_0/0.8)]">
           <div className="flex flex-wrap gap-1.5 text-xs font-semibold">
             {song.number !== null && <Chip>Nr. {song.number}</Chip>}
             {song.genre !== null && <Chip>{song.genre}</Chip>}
@@ -149,30 +145,13 @@ export function SongCard({
           {details.length > 0 && (
             <p className="text-xs text-white/50">{details.join(" · ")}</p>
           )}
-          {media !== undefined && (
-            <p className="flex gap-3 text-xs text-white/60">
-              <button
-                type="button"
-                onClick={onEditVideo}
-                className="underline-offset-2 hover:text-white hover:underline"
-              >
-                Video ändern
-              </button>
-              <a
-                href={watchUrl(media)}
-                target="_blank"
-                rel="noreferrer"
-                className="underline-offset-2 hover:text-white hover:underline"
-              >
-                Auf YouTube ansehen ↗
-              </a>
-            </p>
-          )}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2">
-            <StarRating
-              value={mine}
-              onRate={(stars) => void rate(song.id, stars)}
-            />
+            <div className="pointer-events-auto">
+              <StarRating
+                value={mine}
+                onRate={(stars) => void rate(song.id, stars)}
+              />
+            </div>
             <span className="text-sm text-white/70">
               {summary.count === 0
                 ? "Noch keine Bewertung"

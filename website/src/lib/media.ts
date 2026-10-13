@@ -227,15 +227,19 @@ export function isMedia(value: unknown): value is Media {
  * @param media - the linked video
  * @param muted - whether to start without sound
  * @param start - the second to start at, by default the link's own start
+ * @param loop - whether to start over at the end by itself
  * @returns an embed URL on the privacy-enhanced YouTube domain
  * @remarks
  * Without YouTube's own controls, keyboard and annotations: the page draws
- * its own timeline and steers the player by message (`enablejsapi`).
+ * its own timeline and steers the player by message (`enablejsapi`). Looping
+ * is left to the player - telling it to jump back would show YouTube's own
+ * button.
  */
 export function embedUrl(
   media: Media,
   muted: boolean,
   start = media.start,
+  loop = false,
 ): string {
   const params = new URLSearchParams({
     autoplay: "1",
@@ -248,6 +252,8 @@ export function embedUrl(
     playsinline: "1",
     rel: "0",
     enablejsapi: "1",
+    // YouTube loops a single video only as a playlist of itself.
+    ...(loop ? { loop: "1", playlist: media.videoId } : {}),
   });
   return `https://www.youtube-nocookie.com/embed/${media.videoId}?${params}`;
 }
