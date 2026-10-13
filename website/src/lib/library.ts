@@ -5,6 +5,7 @@
  */
 import songData from "@/data/songs.json";
 import { NO_RATING, type RatingSummary } from "./ratings";
+import type { Marks } from "./social";
 import type { Song } from "./song";
 
 /** Every piece in the archive, in spreadsheet order. */
@@ -16,7 +17,7 @@ export type SortOrder = "random" | "popular" | "unrated" | "title" | "number";
 /** Labels of the orders, for the selects. */
 export const SORT_LABELS: Readonly<Record<SortOrder, string>> = {
   random: "Zufällig",
-  popular: "Beliebteste",
+  popular: "Beliebteste (Sterne + Herzen)",
   unrated: "Noch nicht bewertet",
   title: "Titel A-Z",
   number: "Archiv-Nummer",
@@ -42,6 +43,8 @@ export type SortContext = {
   readonly mine: Readonly<Record<string, number>>;
   /** Fixes the random order, so it stays put while the list re-renders. */
   readonly seed: number;
+  /** Who likes which piece; counts towards the popularity. */
+  readonly likes?: Marks;
 };
 
 /** One category and how many pieces it holds. */
@@ -49,6 +52,9 @@ export type Category = {
   readonly name: string;
   readonly count: number;
 };
+
+/** Stars that neither raise nor lower the popularity. */
+const NEUTRAL_STARS = 3;
 
 /** Largest value of the 32 bit shuffle state. */
 const UINT32_RANGE = 4_294_967_296;
@@ -124,14 +130,20 @@ export function sortSongs(
   let sorted: Song[];
 
   switch (order) {
-    case "popular":
+    case "popular": {
+      const points = (song: Song) =>
+        popularity(
+          summary(song),
+          Object.keys(context.likes?.[song.id] ?? {}).length,
+        );
       sorted = [...songs].sort(
         (a, b) =>
-          summary(b).score - summary(a).score ||
-          summary(b).count - summary(a).count ||
+          points(b) - points(a) ||
+          summary(b).average - summary(a).average ||
           byTitle(a, b),
       );
       break;
+    }
     case "unrated":
       sorted = shuffle(
         songs.filter((song) => context.mine[song.id] === undefined),
@@ -151,6 +163,23 @@ export function sortSongs(
   }
 
   return sorted;
+}
+
+/**
+ * How popular a piece is, from its stars and hearts.
+ *
+ * @param summary - the piece's star votes
+ * @param likes - how many people gave it a heart
+ * @returns points: one per heart, and per vote the stars above or below the
+ *   middle
+ * @remarks
+ * A five-star vote counts +2 - as much as two hearts -, four stars +1, three
+ * stars nothing, and a poor vote takes points away: 2 stars -1, 1 star -2.
+ * So a piece many people rated well or liked leads, and a piece nobody likes
+ * cannot climb just by being rated often.
+ */
+export function popularity(summary: RatingSummary, likes: number): number {
+  return likes + summary.count * (summary.average - NEUTRAL_STARS);
 }
 
 /**

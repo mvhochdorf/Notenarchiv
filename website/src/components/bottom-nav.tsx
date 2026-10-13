@@ -11,7 +11,7 @@ import type { ReactElement } from "react";
 
 /** The tabs, by path. */
 const TABS = [
-  { href: "/", label: "Feed", icon: "▶" },
+  { href: "/", label: "Play", icon: "▶" },
   { href: "/liste/", label: "Archiv", icon: "☰" },
   { href: "/einstellungen/", label: "Einstellungen", icon: "⚙" },
 ] as const;

@@ -1,16 +1,58 @@
 /**
- * The comments of a piece, sliding up from the bottom like on TikTok.
+ * The comments of a piece - or the reports about it - sliding up from the
+ * bottom like on TikTok.
  *
  * @module
  */
 "use client";
 
 import { useState, type ReactElement } from "react";
-import { addComment, deleteComment, useArchive } from "@/lib/archive-store";
+import {
+  addComment,
+  deleteComment,
+  useArchive,
+  type NoteKind,
+} from "@/lib/archive-store";
 import { displayName } from "@/lib/person";
 import { useSettings } from "@/lib/settings";
 import { commentsOf, MAX_COMMENT_LENGTH, timeAgo } from "@/lib/social";
 import type { Song } from "@/lib/song";
+
+/** The texts of the sheet, for comments and for reports. */
+const TEXTS: Readonly<
+  Record<
+    NoteKind,
+    {
+      readonly one: string;
+      readonly many: string;
+      readonly empty: (title: string) => string;
+      readonly hint: string | null;
+      readonly placeholder: string;
+      readonly label: string;
+      readonly send: string;
+    }
+  >
+> = {
+  comments: {
+    one: "Kommentar",
+    many: "Kommentare",
+    empty: (title) =>
+      `Noch keine Kommentare zu „${title}“. Schreib den ersten!`,
+    hint: null,
+    placeholder: "Kommentar hinzufügen ...",
+    label: "Kommentar",
+    send: "Senden",
+  },
+  reports: {
+    one: "Meldung",
+    many: "Meldungen",
+    empty: (title) => `Zu „${title}“ ist noch nichts gemeldet.`,
+    hint: "Stimmt etwas nicht? Zum Beispiel falsches Video, schlechte Aufnahme, falscher Titel, Ausschnitt startet ungünstig. Die Meldung geht an den Verwalter des Archivs.",
+    placeholder: "Was stimmt nicht? ...",
+    label: "Meldung",
+    send: "Melden",
+  },
+};
 
 /**
  * Renders the sheet over the feed.
@@ -23,22 +65,26 @@ import type { Song } from "@/lib/song";
  */
 export function CommentsSheet({
   song,
+  kind = "comments",
   onClose,
 }: {
   readonly song: Song;
+  /** Comments for everybody, or reports for the admin. */
+  readonly kind?: NoteKind;
   readonly onClose: () => void;
 }): ReactElement {
+  const texts = TEXTS[kind];
   const archive = useArchive();
   const settings = useSettings();
   const [now] = useState(() => Date.now());
   const [text, setText] = useState("");
   const name = displayName(settings.firstName, settings.lastName);
-  const comments = commentsOf(archive.comments, song.id);
+  const comments = commentsOf(archive[kind], song.id);
   const canSend = archive.me !== "" && text.trim() !== "";
 
   const send = () => {
     if (canSend) {
-      void addComment(song.id, name, text.trim());
+      void addComment(song.id, name, text.trim(), kind);
       setText("");
     }
   };
@@ -57,8 +103,7 @@ export function CommentsSheet({
       >
         <header className="flex items-center border-b border-white/10 px-4 py-3">
           <h2 id="comments-title" className="flex-1 text-center font-bold">
-            {comments.length}{" "}
-            {comments.length === 1 ? "Kommentar" : "Kommentare"}
+            {comments.length} {comments.length === 1 ? texts.one : texts.many}
           </h2>
           <button
             type="button"
@@ -70,10 +115,15 @@ export function CommentsSheet({
           </button>
         </header>
 
+        {texts.hint !== null && (
+          <p className="border-b border-white/10 px-4 py-3 text-sm text-white/60">
+            {texts.hint}
+          </p>
+        )}
         <ul className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
           {comments.length === 0 && (
             <li className="py-8 text-center text-sm text-white/50">
-              Noch keine Kommentare zu „{song.title}“. Schreib den ersten!
+              {texts.empty(song.title)}
             </li>
           )}
           {comments.map((comment) => (
@@ -98,7 +148,7 @@ export function CommentsSheet({
               {comment.person === archive.me && (
                 <button
                   type="button"
-                  onClick={() => void deleteComment(song.id, comment.id)}
+                  onClick={() => void deleteComment(song.id, comment.id, kind)}
                   className="self-start text-xs text-white/40 hover:text-red-400"
                 >
                   Löschen
@@ -120,8 +170,8 @@ export function CommentsSheet({
               value={text}
               onChange={(event) => setText(event.target.value)}
               maxLength={MAX_COMMENT_LENGTH}
-              placeholder="Kommentar hinzufügen ..."
-              aria-label="Kommentar"
+              placeholder={texts.placeholder}
+              aria-label={texts.label}
               className="min-w-0 flex-1 rounded-xl bg-zinc-800 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-400"
             />
             <button
@@ -129,7 +179,7 @@ export function CommentsSheet({
               disabled={!canSend}
               className="rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-black disabled:opacity-40"
             >
-              Senden
+              {texts.send}
             </button>
           </div>
           <p className="text-xs text-white/40">

@@ -64,7 +64,7 @@ export const END_OPTIONS: Readonly<
   },
   next: {
     label: "Nächstes Stück",
-    hint: "Der Feed wechselt von selbst zum nächsten Stück.",
+    hint: "Play wechselt von selbst zum nächsten Stück.",
   },
 };
 

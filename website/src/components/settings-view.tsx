@@ -21,6 +21,7 @@ import {
   type ShowFilter,
 } from "@/lib/settings";
 import type { SnippetStart } from "@/lib/media";
+import { ClubLogo } from "./club-logo";
 import { ModeNotice } from "./mode-notice";
 
 /** The show filters in the order they are offered. */
@@ -57,7 +58,7 @@ export function SettingsView(): ReactElement {
 
       <fieldset className="space-y-2">
         <legend className="mb-2 text-sm font-semibold tracking-wide text-white/60 uppercase">
-          Angezeigte Stücke (Feed und Archiv)
+          Angezeigte Stücke (Play und Archiv)
         </legend>
         {SHOW_ORDER.map((show) => {
           const count = SONGS.filter((song) =>
@@ -201,7 +202,8 @@ function NameSection({
 
   return (
     <fieldset className="space-y-2">
-      <legend className="mb-2 text-sm font-semibold tracking-wide text-white/60 uppercase">
+      <legend className="mb-2 flex items-center gap-2 text-sm font-semibold tracking-wide text-white/60 uppercase">
+        <ClubLogo className="size-8" />
         Dein Name
       </legend>
       <div className="flex gap-2">

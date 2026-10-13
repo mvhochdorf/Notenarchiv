@@ -4,7 +4,13 @@
  * @module
  */
 import { describe, expect, it } from "vitest";
-import { filterSongs, NO_FILTER, sortSongs, SONGS } from "./library";
+import {
+  filterSongs,
+  NO_FILTER,
+  popularity,
+  sortSongs,
+  SONGS,
+} from "./library";
 import { FIXED_MEDIA, parseYouTube, snippetStart } from "./media";
 import { summarize } from "./ratings";
 import {
@@ -130,6 +136,27 @@ describe("filter and sort", () => {
       .filter((number) => number !== null)
       .map((number) => parseInt(number, 10));
     expect(numbers).toEqual([...numbers].sort((a, b) => a - b));
+  });
+
+  it("mixes stars and hearts into popularity", () => {
+    const [a, b, c] = SONGS;
+    const votes: Record<string, Record<string, number>> = {
+      [a.id]: { x: 5, y: 5 },
+      [b.id]: { x: 1 },
+    };
+    const summaries = summarize(votes);
+    // two 5-star votes = +4, three hearts = +3, one 1-star vote = -2
+    expect(popularity(summaries.get(a.id)!, 0)).toBe(4);
+    expect(popularity(summaries.get(b.id)!, 0)).toBe(-2);
+    const likes = {
+      [c.id]: { x: true as const, y: true as const, z: true as const },
+    };
+    const sorted = sortSongs([b, c, a], "popular", {
+      ...context,
+      summaries,
+      likes,
+    });
+    expect(sorted.map((song) => song.id)).toEqual([a.id, c.id, b.id]);
   });
 
   it("leaves out what I already rated", () => {

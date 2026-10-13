@@ -62,6 +62,9 @@ const PRELOAD_RATE = 0.25;
 /** How far a waiting player may run past its start before it is pulled back. */
 const MAX_DRIFT_S = 3;
 
+/** How long a video may take to start before its sound counts as blocked. */
+const SOUND_CHECK_MS = 2500;
+
 /** Longest pause between the two taps of a double tap. */
 const DOUBLE_TAP_MS = 280;
 
@@ -138,6 +141,7 @@ export function VideoPlayer({
   title,
   onEnded,
   onUnmute,
+  onSoundBlocked,
   onDoubleTap,
 }: {
   readonly media: FixedMedia;
@@ -147,6 +151,8 @@ export function VideoPlayer({
   readonly title: string;
   readonly onEnded: () => void;
   readonly onUnmute: () => void;
+  /** Called when the browser refuses to play with sound before a touch. */
+  readonly onSoundBlocked: () => void;
   readonly onDoubleTap: () => void;
 }): ReactElement {
   const frame = useRef<HTMLIFrameElement>(null);
@@ -284,6 +290,25 @@ export function VideoPlayer({
       command(frame.current, isMuted ? "mute" : "unMute");
     }
   });
+
+  // A browser that allows no sound before the first touch does not start a
+  // video with sound at all; the feed then goes silent until a touch.
+  const checkSound = useEffectEvent(() => {
+    if (active && !muted && lastState.current !== PLAYER.playing) {
+      if (frame.current !== null) {
+        // Silent, the browser lets it play - the video it held back starts.
+        // Being told to play shows YouTube's button, see VEIL_MS.
+        veil();
+        command(frame.current, "mute");
+        command(frame.current, "playVideo");
+      }
+      onSoundBlocked();
+    }
+  });
+  useEffect(() => {
+    const timer = setTimeout(checkSound, SOUND_CHECK_MS);
+    return () => clearTimeout(timer);
+  }, []);
   useEffect(() => {
     onMuted(muted);
   }, [muted]);
@@ -417,6 +442,7 @@ export function VideoPlayer({
         <div
           role="button"
           tabIndex={0}
+          data-video-tap
           aria-label={playing ? "Anhalten" : "Weiterspielen"}
           onClick={(event) => {
             const box = event.currentTarget.getBoundingClientRect();

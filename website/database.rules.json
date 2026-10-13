@@ -98,6 +98,30 @@
             ".validate": false
           }
         }
+      },
+      "reports": {
+        ".read": "auth != null",
+        "$songId": {
+          "$commentId": {
+            ".write": "auth != null && ((!data.exists() && newData.child('person').val() === root.child('notenarchiv/users/' + auth.uid + '/personId').val()) || (data.exists() && !newData.exists() && data.child('person').val() === root.child('notenarchiv/users/' + auth.uid + '/personId').val()))",
+            ".validate": "newData.hasChildren(['person', 'name', 'text', 'at'])",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length <= 81"
+            },
+            "person": {
+              ".validate": "newData.isString()"
+            },
+            "text": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 500"
+            },
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() <= now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
       }
     }
   }

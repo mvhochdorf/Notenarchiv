@@ -10,6 +10,7 @@ import { identify } from "@/lib/archive-store";
 import { useHydrated } from "@/lib/browser-values";
 import { MAX_NAME_PART, personId } from "@/lib/person";
 import { useSettings } from "@/lib/settings";
+import { ClubLogo } from "./club-logo";
 
 /**
  * Renders the question over the whole app, until it is answered.
@@ -57,7 +58,7 @@ export function NameGate(): ReactElement | null {
         }}
       >
         <div className="space-y-2 text-center">
-          <p className="text-5xl">🎼</p>
+          <ClubLogo className="mx-auto size-24" />
           <h1 className="text-2xl font-black">Willkommen im Notenarchiv</h1>
           <p className="text-sm text-white/60">
             Wie heißt du? Mit deinem Namen gehören deine Bewertungen, Likes und

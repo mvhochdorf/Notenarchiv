@@ -25,6 +25,11 @@ Tailwind, Firebase Realtime Database mit anonymem Login. Coding-Regeln:
 | `website/src/lib/archive-store.ts`     | Bewertungen und Videos (Firebase / lokal)        |
 | `website/database.rules.json`          | Sicherheitsregeln der Firebase-Datenbank         |
 
+## Vereinslogo
+
+`website/public/logo.png` - zum Austauschen einfach ersetzen, Details in
+[docs/logo.md](docs/logo.md).
+
 ## Notenliste aktualisieren
 
 Nach Änderungen an `Notenliste.xlsx` im Ordner `website`:
@@ -45,7 +50,7 @@ zurück). "Beliebteste" sortiert nach einem gewichteten Durchschnitt: ein
 Stück mit einer einzigen 5-Sterne-Stimme landet nicht vor einem mit dreißig
 Stimmen im Schnitt 4,8.
 
-## Bedienung im Feed
+## Bedienung in Play
 
 Oben drei Feeds:
 
@@ -65,7 +70,12 @@ beim Swipen sofort und ohne YouTube-Einblendung starten.
 - **Tippen** aufs Video: Pause / weiter (beim ersten Mal: Ton einschalten)
 - **Doppeltippen**: Gefällt mir
 - **Gedrückt halten**: doppelte Geschwindigkeit
-- Rechts: Gefällt mir, Kommentare, Gespeichert (Filter im Archiv), Teilen
+- Rechts: Gefällt mir, Kommentare, Gespeichert (Filter im Archiv), Teilen,
+  Melden (Freitext an den Verwalter; im Archiv Filter "Anmerkungen", in der
+  Auswertung Reiter "Meldungen" mit CSV inkl. Stück-ID)
+
+Im Archiv sortiert **Beliebteste** nach Sternen und Herzen zusammen: jedes
+Herz +1, jede Bewertung Sterne minus 3 (5★ = +2, 1★ = −2).
 
 ## Musik / Videos
 
@@ -146,6 +156,8 @@ Person bewerten.
   `true`
 - `notenarchiv/comments/{songId}/{commentId}` -
   `{ person, name, text, at }`, löschen nur die eigenen
+- `notenarchiv/reports/{songId}/{reportId}` - Meldungen ("Melden"-Button):
+  `{ person, name, text, at }`, wie Kommentare
 - `notenarchiv/media/{songId}` - `{ videoId, start }` (in der App
   verknüpfte Videos, haben Vorrang vor `youtube.json`)
 

@@ -20,6 +20,9 @@
  *   `/{songId}/{personId}` - `true` when that person likes, saved or has
  *   seen the piece
  * - `notenarchiv/comments/{songId}/{commentId}` - a {@link Comment}
+ * - `notenarchiv/reports/{songId}/{reportId}` - a note for the admin about
+ *   something wrong with the piece (wrong video, wrong title, ...), stored
+ *   like a comment
  *
  * Without a configured Firebase project the same state lives in this
  * browser's localStorage instead, so the app is usable before the database is
@@ -64,8 +67,17 @@ const LOCAL_MARK_KEYS: Readonly<Record<MarkKind, string>> = {
   views: storageKey("views", "mine"),
 };
 
-/** Local key of the comments written in this browser. */
-const LOCAL_COMMENTS_KEY = storageKey("comments", "mine");
+/** Local key of the comments and reports written in this browser. */
+const LOCAL_NOTE_KEYS: Readonly<Record<NoteKind, string>> = {
+  comments: storageKey("comments", "mine"),
+  reports: storageKey("reports", "mine"),
+};
+
+/** The kinds of text notes on a piece: comments for all, reports for the admin. */
+export type NoteKind = "comments" | "reports";
+
+/** Every kind of note. */
+const NOTE_KINDS: readonly NoteKind[] = ["comments", "reports"];
 
 /** Base of the random part of local comment ids (digits and letters). */
 const ID_RADIX = 36;
@@ -93,6 +105,8 @@ export type ArchiveState = {
   readonly views: Marks;
   readonly saved: Marks;
   readonly comments: AllComments;
+  /** Notes about something wrong with a piece, for the admin. */
+  readonly reports: AllComments;
   /** The visitor's person id, empty until they gave their name. */
   readonly me: string;
   /** Everybody's name, by person id, as their devices registered it. */
@@ -111,6 +125,7 @@ const INITIAL: ArchiveState = {
   views: {},
   saved: {},
   comments: {},
+  reports: {},
   me: "",
   people: {},
 };
@@ -260,16 +275,18 @@ export async function mark(
 }
 
 /**
- * Adds a comment to a piece.
+ * Adds a comment or a report to a piece.
  *
  * @param songId - which piece
  * @param name - the name to show
  * @param text - the comment
+ * @param kind - a comment for everybody, or a report for the admin
  */
 export async function addComment(
   songId: string,
   name: string,
   text: string,
+  kind: NoteKind = "comments",
 ): Promise<void> {
   // Nothing is kept before the visitor gave their name: it would belong
   // to nobody.
@@ -279,30 +296,32 @@ export async function addComment(
       const { database } = await import("./firebase-app");
       const { push, ref } = await import("firebase/database");
       // The live listener shows it as soon as the database has it.
-      await push(ref(database(), `${ROOT}/comments/${songId}`), comment);
+      await push(ref(database(), `${ROOT}/${kind}/${songId}`), comment);
     } else {
       const id = `${comment.at}-${Math.random().toString(ID_RADIX).slice(2)}`;
-      setComment(songId, id, comment);
+      setComment(kind, songId, id, comment);
     }
   }
 }
 
 /**
- * Deletes one of the visitor's own comments.
+ * Deletes one of the visitor's own comments or reports.
  *
  * @param songId - which piece
  * @param commentId - which comment
+ * @param kind - whether it is a comment or a report
  */
 export async function deleteComment(
   songId: string,
   commentId: string,
+  kind: NoteKind = "comments",
 ): Promise<void> {
   if (state.mode === "online") {
     const { database } = await import("./firebase-app");
     const { ref, remove } = await import("firebase/database");
-    await remove(ref(database(), `${ROOT}/comments/${songId}/${commentId}`));
+    await remove(ref(database(), `${ROOT}/${kind}/${songId}/${commentId}`));
   } else {
-    setComment(songId, commentId, null);
+    setComment(kind, songId, commentId, null);
   }
 }
 
@@ -343,20 +362,21 @@ function ownName(): Record<string, string> {
   return person === "" ? {} : { [person]: displayName(firstName, lastName) };
 }
 
-/** Changes one comment in local mode and keeps the result. */
+/** Changes one comment or report in local mode and keeps the result. */
 function setComment(
+  kind: NoteKind,
   songId: string,
   commentId: string,
   comment: Comment | null,
 ): void {
-  const byId: Record<string, Comment> = { ...(state.comments[songId] ?? {}) };
+  const byId: Record<string, Comment> = { ...(state[kind][songId] ?? {}) };
   if (comment === null) {
     delete byId[commentId];
   } else {
     byId[commentId] = comment;
   }
-  update({ comments: { ...state.comments, [songId]: byId } });
-  writeStored(LOCAL_COMMENTS_KEY, LOCAL_VERSION, state.comments);
+  update({ [kind]: { ...state[kind], [songId]: byId } });
+  writeStored(LOCAL_NOTE_KEYS[kind], LOCAL_VERSION, state[kind]);
 }
 
 /** Adds a listener and starts the store on first use. */
@@ -387,20 +407,37 @@ async function start(): Promise<void> {
       const waiting = new Set([
         "ratings",
         "media",
-        "comments",
         "users",
+        ...NOTE_KINDS,
         ...MARK_KINDS,
       ]);
+      const answered = (node: string) => {
+        waiting.delete(node);
+        update({ mode: "online", ready: waiting.size === 0 });
+      };
       const listen = (node: string, apply: (value: unknown) => void) => {
-        onValue(ref(db, `${ROOT}/${node}`), (snapshot) => {
-          apply(snapshot.val());
-          waiting.delete(node);
-          update({ mode: "online", ready: waiting.size === 0 });
-        });
+        onValue(
+          ref(db, `${ROOT}/${node}`),
+          (snapshot) => {
+            apply(snapshot.val());
+            answered(node);
+          },
+          (error) => {
+            // Mostly rules that do not know this part yet (published before
+            // it was added). The rest of the archive still works.
+            console.warn(
+              `Notenarchiv: "${node}" nicht lesbar - Regeln aus database.rules.json neu veröffentlichen?`,
+              error,
+            );
+            answered(node);
+          },
+        );
       };
       listen("ratings", (value) => setVotes((value ?? {}) as AllVotes));
       listen("media", (value) => update({ media: validMedia(value) }));
-      listen("comments", (value) => update({ comments: validComments(value) }));
+      for (const kind of NOTE_KINDS) {
+        listen(kind, (value) => update({ [kind]: validComments(value) }));
+      }
       listen("users", (value) =>
         update({ people: { ...peopleOf(value), ...ownName() } }),
       );
@@ -438,8 +475,13 @@ function startLocal(mode: ArchiveMode): void {
         validMarks(readStored(LOCAL_MARK_KEYS[kind], LOCAL_VERSION, isRecord)),
       ]),
     ),
-    comments: validComments(
-      readStored(LOCAL_COMMENTS_KEY, LOCAL_VERSION, isRecord),
+    ...Object.fromEntries(
+      NOTE_KINDS.map((kind) => [
+        kind,
+        validComments(
+          readStored(LOCAL_NOTE_KEYS[kind], LOCAL_VERSION, isRecord),
+        ),
+      ]),
     ),
   });
   setVotes(votes);

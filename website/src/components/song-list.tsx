@@ -22,8 +22,10 @@ import {
 } from "@/lib/library";
 import { mediaFor } from "@/lib/media";
 import { NO_RATING } from "@/lib/ratings";
-import { isMarked } from "@/lib/social";
+import { isMarked, markCount } from "@/lib/social";
+import type { Song } from "@/lib/song";
 import { isShown, SHOW_OPTIONS, useSettings } from "@/lib/settings";
+import { ClubLogo } from "./club-logo";
 import { ModeNotice } from "./mode-notice";
 import { StarRating } from "./star-rating";
 
@@ -53,19 +55,25 @@ export function SongList(): ReactElement {
   const [filter, setFilter] = useState<SongFilter>(NO_FILTER);
   const [order, setOrder] = useState<SortOrder>("title");
   const [onlySaved, setOnlySaved] = useState(false);
+  const [onlyReported, setOnlyReported] = useState(false);
   const deferredFilter = useDeferredValue(filter);
-  const savedCount = shown.filter((song) =>
-    isMarked(archive.saved, song.id, archive.me),
-  ).length;
+  const isSaved = (song: Song) => isMarked(archive.saved, song.id, archive.me);
+  const reportCount = (song: Song) =>
+    Object.keys(archive.reports[song.id] ?? {}).length;
+  const savedCount = shown.filter(isSaved).length;
+  const reportedCount = shown.filter((song) => reportCount(song) > 0).length;
 
   const songs = sortSongs(
     filterSongs(shown, deferredFilter).filter(
-      (song) => !onlySaved || isMarked(archive.saved, song.id, archive.me),
+      (song) =>
+        (!onlySaved || isSaved(song)) &&
+        (!onlyReported || reportCount(song) > 0),
     ),
     order,
     {
       summaries: archive.summaries,
       mine: archive.mine,
+      likes: archive.likes,
       seed,
     },
   );
@@ -81,8 +89,9 @@ export function SongList(): ReactElement {
     <div className="mx-auto flex w-full max-w-3xl flex-col">
       <header className="sticky top-0 z-10 space-y-3 bg-zinc-950/95 px-4 pt-4 pb-3 backdrop-blur">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="mr-auto text-2xl font-black tracking-tight">
-            🎼 Notenarchiv
+          <h1 className="mr-auto flex items-center gap-2 text-2xl font-black tracking-tight">
+            <ClubLogo className="size-9" />
+            Notenarchiv
           </h1>
           <ModeNotice mode={archive.mode} />
         </div>
@@ -110,6 +119,14 @@ export function SongList(): ReactElement {
             onClick={() => setOnlySaved(!onlySaved)}
           >
             🔖 Gespeichert ({savedCount})
+          </button>
+          <button
+            type="button"
+            aria-pressed={onlyReported}
+            className={chipClass(onlyReported)}
+            onClick={() => setOnlyReported(!onlyReported)}
+          >
+            ⚠ Anmerkungen ({reportedCount})
           </button>
           {genres.map((genre) => (
             <button
@@ -167,6 +184,8 @@ export function SongList(): ReactElement {
       <ul className="divide-y divide-white/5 px-2 pb-4">
         {songs.map((song, index) => {
           const summary = archive.summaries.get(song.id) ?? NO_RATING;
+          const likes = markCount(archive.likes, song.id);
+          const reports = reportCount(song);
           return (
             <li key={song.id}>
               <Link
@@ -191,6 +210,14 @@ export function SongList(): ReactElement {
                         🎬
                       </span>
                     )}
+                    {reports > 0 && (
+                      <span
+                        className="ml-1.5 text-amber-400"
+                        title={`${reports} Anmerkung(en)`}
+                      >
+                        ⚠{reports}
+                      </span>
+                    )}
                   </span>
                   <span className="block truncate text-xs text-white/50">
                     {[
@@ -212,8 +239,13 @@ export function SongList(): ReactElement {
                   />
                   <span className="text-[11px] text-white/40">
                     {summary.count === 0
-                      ? "-"
+                      ? likes > 0
+                        ? ""
+                        : "-"
                       : `Ø ${summary.average.toFixed(AVERAGE_DIGITS)} (${summary.count})`}
+                    {likes > 0 && (
+                      <span className="ml-1.5 text-rose-400">♥ {likes}</span>
+                    )}
                   </span>
                 </span>
               </Link>

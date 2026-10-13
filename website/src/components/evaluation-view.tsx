@@ -18,13 +18,14 @@ import { SONGS } from "@/lib/library";
 import { ModeNotice } from "./mode-notice";
 
 /** The three tables. */
-type Table = "songs" | "people" | "comments";
+type Table = "songs" | "people" | "comments" | "reports";
 
 /** Labels of the tables. */
 const TABLES: Readonly<Record<Table, string>> = {
   songs: "Stücke",
   people: "Personen",
   comments: "Kommentare",
+  reports: "Meldungen",
 };
 
 /** The columns the piece table can be sorted by, and their titles. */
@@ -66,9 +67,12 @@ export function EvaluationView(): ReactElement {
     );
   const people = personRows(archive);
   const comments = commentRows(SONGS, archive);
+  // Reports are stored like comments, so the same rows serve both.
+  const reports = commentRows(SONGS, { ...archive, comments: archive.reports });
+  const notes = table === "reports" ? reports : comments;
 
   const download = () => {
-    const [name, csv] = exportOf(table, songs, people, comments);
+    const [name, csv] = exportOf(table, songs, people, notes);
     const link = document.createElement("a");
     link.href = URL.createObjectURL(
       new Blob([csv], { type: "text/csv;charset=utf-8" }),
@@ -210,14 +214,24 @@ export function EvaluationView(): ReactElement {
         </div>
       )}
 
-      {table === "comments" && (
+      {(table === "comments" || table === "reports") && (
         <ul className="space-y-2">
-          {comments.length === 0 && (
-            <li className="rounded-2xl bg-white/5 p-6 text-center text-white/50">
-              Noch keine Kommentare.
+          {table === "reports" && (
+            <li className="text-sm text-white/60">
+              Meldungen zu Fehlern bei Stücken (falsches Video, falscher Titel
+              ...). Zum Beheben die CSV-Datei herunterladen und weitergeben;
+              erledigte Meldungen in der Firebase-Konsole unter
+              notenarchiv/reports löschen.
             </li>
           )}
-          {comments.map((row) => (
+          {notes.length === 0 && (
+            <li className="rounded-2xl bg-white/5 p-6 text-center text-white/50">
+              {table === "reports"
+                ? "Keine Meldungen."
+                : "Noch keine Kommentare."}
+            </li>
+          )}
+          {notes.map((row) => (
             <li
               key={`${row.song.id}-${row.at}`}
               className="rounded-2xl bg-white/5 p-3"
@@ -246,7 +260,7 @@ function exportOf(
   table: Table,
   songs: readonly SongRow[],
   people: ReturnType<typeof personRows>,
-  comments: ReturnType<typeof commentRows>,
+  notes: ReturnType<typeof commentRows>,
 ): [string, string] {
   let result: [string, string];
   switch (table) {
@@ -266,12 +280,28 @@ function exportOf(
         ),
       ];
       break;
+    case "reports":
+      result = [
+        "notenarchiv-meldungen.csv",
+        toCsv(
+          ["Datum", "Name", "Nr.", "Stück", "ID", "Meldung"],
+          notes.map((row) => [
+            dateTime(row.at),
+            row.name,
+            row.song.number ?? "",
+            row.song.title,
+            row.song.id,
+            row.text,
+          ]),
+        ),
+      ];
+      break;
     case "comments":
       result = [
         "notenarchiv-kommentare.csv",
         toCsv(
           ["Datum", "Name", "Nr.", "Stück", "Kommentar"],
-          comments.map((row) => [
+          notes.map((row) => [
             dateTime(row.at),
             row.name,
             row.song.number ?? "",

@@ -6,7 +6,7 @@
  */
 "use client";
 
-import type { ReactElement } from "react";
+import { useState, type ReactElement } from "react";
 import { mark, rate } from "@/lib/archive-store";
 import { genreHue } from "@/lib/genre-color";
 import {
@@ -23,6 +23,9 @@ import { VideoPlayer } from "./video-player";
 
 /** Digits shown of an average. */
 const AVERAGE_DIGITS = 1;
+
+/** How long the hint after saving a piece stays. */
+const SAVED_HINT_MS = 3000;
 
 /** What the visitors did with a piece, for the button column. */
 export type CardSocial = {
@@ -51,8 +54,10 @@ export function SongCard({
   muted,
   social,
   onUnmute,
+  onSoundBlocked,
   onEditVideo,
   onComments,
+  onReport,
   onEnded,
 }: {
   readonly song: Song;
@@ -65,10 +70,13 @@ export function SongCard({
   readonly muted: boolean;
   readonly social: CardSocial;
   readonly onUnmute: () => void;
+  readonly onSoundBlocked: () => void;
   readonly onEditVideo: () => void;
   readonly onComments: () => void;
+  readonly onReport: () => void;
   readonly onEnded: () => void;
 }): ReactElement {
+  const [savedHint, setSavedHint] = useState(false);
   const hue = genreHue(song.genre);
   const people = [
     song.composer && `Komponist: ${song.composer}`,
@@ -107,6 +115,7 @@ export function SongCard({
           title={song.title}
           onEnded={onEnded}
           onUnmute={onUnmute}
+          onSoundBlocked={onSoundBlocked}
           onDoubleTap={() => void mark("likes", song.id, true)}
         />
       ) : (
@@ -172,7 +181,7 @@ export function SongCard({
           </div>
         </div>
 
-        <div className="pointer-events-auto flex flex-col items-center gap-4 pb-1">
+        <div className="pointer-events-auto flex flex-col items-center gap-3 pb-1">
           <ActionButton
             label={String(social.likes)}
             icon="heart"
@@ -193,7 +202,13 @@ export function SongCard({
             active={social.saved ? "text-amber-400" : null}
             pressed={social.saved}
             title={social.saved ? "Nicht mehr merken" : "Merken"}
-            onClick={() => void mark("saved", song.id, !social.saved)}
+            onClick={() => {
+              if (!social.saved) {
+                setSavedHint(true);
+                setTimeout(() => setSavedHint(false), SAVED_HINT_MS);
+              }
+              void mark("saved", song.id, !social.saved);
+            }}
           />
           <ActionButton
             label="Teilen"
@@ -201,8 +216,20 @@ export function SongCard({
             title="Teilen"
             onClick={() => void share(song)}
           />
+          <ActionButton
+            label="Melden"
+            icon="flag"
+            title="Etwas stimmt nicht - melden"
+            onClick={onReport}
+          />
         </div>
       </div>
+      {savedHint && (
+        <p className="pointer-events-none absolute inset-x-6 top-1/3 z-30 rounded-2xl bg-black/75 px-4 py-3 text-center text-sm backdrop-blur">
+          🔖 Gemerkt - alle gemerkten Stücke findest du im <b>Archiv</b> unter{" "}
+          <b>Gespeichert</b>.
+        </p>
+      )}
     </article>
   );
 }

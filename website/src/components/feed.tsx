@@ -14,7 +14,12 @@ import {
   useState,
   type ReactElement,
 } from "react";
-import { mark, useArchive, type ArchiveState } from "@/lib/archive-store";
+import {
+  mark,
+  useArchive,
+  type ArchiveState,
+  type NoteKind,
+} from "@/lib/archive-store";
 import { reshuffle, useHashSongId, useVisitSeed } from "@/lib/browser-values";
 import {
   categories,
@@ -29,6 +34,7 @@ import { FEED_TABS, rankFeed, type FeedTab } from "@/lib/recommend";
 import { isShown, useSettings, type ShowFilter } from "@/lib/settings";
 import type { Song } from "@/lib/song";
 import { isMarked, markCount } from "@/lib/social";
+import { ClubLogo } from "./club-logo";
 import { CommentsSheet } from "./comments-sheet";
 import { LinkVideoDialog } from "./link-video-dialog";
 import { ModeNotice } from "./mode-notice";
@@ -77,9 +83,15 @@ export function Feed(): ReactElement {
   });
   const [frozen, setFrozen] = useState<readonly Song[] | null>(null);
   const [active, setActive] = useState(0);
-  const [muted, setMuted] = useState(true);
+  // Sound is on; only a browser that blocks it before the first touch makes
+  // the feed start silent, see VideoPlayer's onSoundBlocked.
+  const [muted, setMuted] = useState(false);
+  const [shownHash, setShownHash] = useState<string | null>(null);
   const [editing, setEditing] = useState<Song | null>(null);
-  const [commenting, setCommenting] = useState<Song | null>(null);
+  const [commenting, setCommenting] = useState<{
+    song: Song;
+    kind: NoteKind;
+  } | null>(null);
   const dialogOpen = editing !== null || commenting !== null;
   const scroller = useRef<HTMLDivElement>(null);
 
@@ -87,6 +99,16 @@ export function Feed(): ReactElement {
     // Set while rendering, as React allows for state derived from props:
     // the first order is fixed as soon as it can be worked out.
     setFrozen(buildList(choice, show, archive, seed, hashId || null));
+    setShownHash(hashId);
+  } else if (frozen !== null && hashId !== null && hashId !== shownHash) {
+    // A piece chosen in the archive arrives in the address only after the
+    // feed has been laid out - put it first then.
+    setShownHash(hashId);
+    const first = SONGS.find((song) => song.id === hashId);
+    if (first !== undefined && frozen[0] !== first) {
+      setFrozen([first, ...frozen.filter((song) => song !== first)]);
+      setActive(0);
+    }
   }
   const activeId = frozen?.[active]?.id ?? null;
 
@@ -103,6 +125,30 @@ export function Feed(): ReactElement {
     }
     return () => clearTimeout(timer);
   }, [activeId]);
+
+  useEffect(() => {
+    scroller.current?.scrollTo({ top: 0 });
+  }, [shownHash]);
+
+  useEffect(() => {
+    let cleanup: () => void = () => undefined;
+    if (muted) {
+      // The browser lets sound play once the page was touched. Any touch
+      // will do - except a tap on the video, which turns the sound on itself
+      // (and must not pause it as well).
+      const unmute = (event: Event) => {
+        const target = event.target as Element | null;
+        if ((target?.closest("[data-video-tap]") ?? null) === null) {
+          setMuted(false);
+        }
+      };
+      const events = ["pointerdown", "keydown", "touchend"] as const;
+      events.forEach((name) => window.addEventListener(name, unmute));
+      cleanup = () =>
+        events.forEach((name) => window.removeEventListener(name, unmute));
+    }
+    return cleanup;
+  }, [muted]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -180,7 +226,9 @@ export function Feed(): ReactElement {
                   comments: Object.keys(archive.comments[song.id] ?? {}).length,
                 }}
                 onUnmute={() => setMuted(false)}
-                onComments={() => setCommenting(song)}
+                onSoundBlocked={() => setMuted(true)}
+                onComments={() => setCommenting({ song, kind: "comments" })}
+                onReport={() => setCommenting({ song, kind: "reports" })}
                 onEnded={() => {
                   const box = scroller.current;
                   box?.scrollBy({ top: box.clientHeight, behavior: "smooth" });
@@ -222,7 +270,11 @@ export function Feed(): ReactElement {
         />
       )}
       {commenting !== null && (
-        <CommentsSheet song={commenting} onClose={() => setCommenting(null)} />
+        <CommentsSheet
+          song={commenting.song}
+          kind={commenting.kind}
+          onClose={() => setCommenting(null)}
+        />
       )}
     </div>
   );
@@ -243,10 +295,10 @@ function FilterBar({
   return (
     <div className="absolute inset-x-0 top-0 z-10 space-y-2 px-4 pt-3">
       <div className="flex items-center gap-2">
-        <span className="w-24 text-lg" aria-hidden>
-          🎼
+        <span className="w-24">
+          <ClubLogo className="size-9 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]" />
         </span>
-        <nav className="flex flex-1 justify-center gap-5" aria-label="Feeds">
+        <nav className="flex flex-1 justify-center gap-5" aria-label="Auswahl">
           {FEED_TABS.map(({ tab, label }) => (
             <button
               key={tab}
