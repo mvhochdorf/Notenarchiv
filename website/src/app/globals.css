@@ -32,3 +32,21 @@ body {
     }
   }
 }
+
+/* The YouTube frame of a card (see components/youtube-frame.tsx). On a card
+   higher than wide - a phone held upright - only a strip of the video shows,
+   the one just left of its middle, so YouTube's own button in the middle
+   stays out of sight. On a card wider than high the whole video shows. */
+.video-frame {
+  --video-width: var(--strip-width);
+  width: var(--video-width);
+  height: calc(var(--video-width) * 9 / 16 + 2 * var(--crop));
+  left: calc(100cqw + var(--clearance) - var(--video-width) / 2);
+}
+
+@container (min-aspect-ratio: 1 / 1) {
+  .video-frame {
+    --video-width: var(--full-width);
+    left: calc(50cqw - var(--video-width) / 2);
+  }
+}

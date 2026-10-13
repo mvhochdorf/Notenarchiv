@@ -5,7 +5,13 @@
  */
 "use client";
 
-import { useEffect, useEffectEvent, useRef, type ReactElement } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useRef,
+  type CSSProperties,
+  type ReactElement,
+} from "react";
 
 /**
  * Pixels of the player cut off above and below.
@@ -22,23 +28,31 @@ const CROP_PX = 80;
  *
  * @remarks
  * YouTube puts its own play and pause button in the middle of the player
- * for a few seconds whenever playback starts - and no player setting
- * stops it. So the video is placed with its middle just off the right edge
- * of the card: the button is never in sight. Next to it YouTube also shows
- * a "previous" button, reaching 110 pixels left of the middle; this is that
- * and a margin.
+ * for a few seconds whenever playback starts, pauses or resumes - and no
+ * player setting stops it. On a card higher than wide, only a strip of the
+ * video shows anyway; there the video is placed with its middle just off the
+ * right edge of the card, so the button is never in sight. Next to it
+ * YouTube also shows a "previous" button, reaching 110 pixels left of the
+ * middle; this is that and a margin.
+ *
+ * On a card wider than high the whole video shows, its middle and the button
+ * with it - see `.video-frame` in globals.css, which picks the layout.
  */
 const BUTTON_CLEARANCE_PX = 130;
 
 /**
- * Width of the video, as CSS.
- *
- * @remarks
- * At least twice the card plus the clearance, so a strip of card width fits
- * left of the middle; and at least wide enough that the video, kept in its
- * shape, still fills the card's height.
+ * Width of the video on a card higher than wide, as CSS: at least twice the
+ * card plus the clearance, so a strip of card width fits left of the middle;
+ * and at least wide enough that the video, kept in its shape, still fills
+ * the card's height.
  */
-const VIDEO_WIDTH = `max(calc(200cqw + ${2 * BUTTON_CLEARANCE_PX}px), calc(100cqh * 16 / 9))`;
+const STRIP_WIDTH = `max(calc(200cqw + ${2 * BUTTON_CLEARANCE_PX}px), calc(100cqh * 16 / 9))`;
+
+/**
+ * Width of the video on a card wider than high, as CSS: the whole card,
+ * filled like a photo set to "cover".
+ */
+const FULL_WIDTH = "max(100cqw, calc(100cqh * 16 / 9))";
 
 /** How often the page asks the player to report, until it answers. */
 const LISTEN_RETRY_MS = 500;
@@ -52,8 +66,9 @@ export type PlayerInfo = {
 };
 
 /**
- * Renders the player, filling its box like a photo set to "cover" - the
- * part of the video just left of its middle, see {@link BUTTON_CLEARANCE_PX}.
+ * Renders the player, filling its box like a photo set to "cover" - on a
+ * box higher than wide the part just left of the video's middle, see
+ * {@link BUTTON_CLEARANCE_PX}.
  *
  * @param props - the player address, its title, where to report what the
  *   player says, and where to hand out the frame for sending commands
@@ -113,13 +128,15 @@ export function YouTubeFrame({
       src={src}
       title={title}
       allow="autoplay; encrypted-media; picture-in-picture"
-      className="pointer-events-none absolute top-1/2 -translate-y-1/2"
-      style={{
-        width: VIDEO_WIDTH,
-        height: `calc(${VIDEO_WIDTH} * 9 / 16 + ${2 * CROP_PX}px)`,
-        // The visible strip ends just left of the video's middle.
-        left: `calc(100cqw + ${BUTTON_CLEARANCE_PX}px - ${VIDEO_WIDTH} / 2)`,
-      }}
+      className="video-frame pointer-events-none absolute top-1/2 -translate-y-1/2"
+      style={
+        {
+          "--strip-width": STRIP_WIDTH,
+          "--full-width": FULL_WIDTH,
+          "--clearance": `${BUTTON_CLEARANCE_PX}px`,
+          "--crop": `${CROP_PX}px`,
+        } as CSSProperties
+      }
     />
   );
 }

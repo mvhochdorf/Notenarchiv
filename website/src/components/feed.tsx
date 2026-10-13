@@ -259,9 +259,7 @@ export function Feed(): ReactElement {
   }
 
   return (
-    // An upright column on wide screens too, as on a phone - see
-    // BUTTON_CLEARANCE_PX in youtube-frame.tsx for why the video needs it.
-    <div className="relative mx-auto h-full w-full max-w-md">
+    <div className="relative h-full w-full">
       {content}
       {editing !== null && (
         <LinkVideoDialog
