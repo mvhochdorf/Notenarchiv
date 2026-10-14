@@ -224,6 +224,7 @@ export function Feed(): ReactElement {
                   saved: isMarked(archive.saved, song.id, archive.me),
                   saves: markCount(archive.saved, song.id),
                   comments: Object.keys(archive.comments[song.id] ?? {}).length,
+                  reports: Object.keys(archive.reports[song.id] ?? {}).length,
                 }}
                 onUnmute={() => setMuted(false)}
                 onSoundBlocked={() => setMuted(true)}

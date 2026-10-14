@@ -48,6 +48,12 @@ describe("summarize", () => {
     expect(summary.get("x")?.count).toBe(2);
   });
 
+  it("counts zero stars as a vote", () => {
+    const summary = summarize({ x: { a: 0, b: 5 } });
+    expect(summary.get("x")?.average).toBe(2.5);
+    expect(summary.get("x")?.count).toBe(2);
+  });
+
   it("ranks many good votes above a single perfect one", () => {
     const summary = summarize({
       lonely: { a: 5 },

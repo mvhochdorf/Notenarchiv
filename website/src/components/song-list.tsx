@@ -7,9 +7,8 @@
 
 import Link from "next/link";
 import { useDeferredValue, useState, type ReactElement } from "react";
-import { useArchive } from "@/lib/archive-store";
+import { mark, rate, useArchive } from "@/lib/archive-store";
 import { useVisitSeed } from "@/lib/browser-values";
-import { genreHue } from "@/lib/genre-color";
 import {
   categories,
   filterSongs,
@@ -26,6 +25,7 @@ import { isMarked, markCount } from "@/lib/social";
 import type { Song } from "@/lib/song";
 import { isShown, SHOW_OPTIONS, useSettings } from "@/lib/settings";
 import { ClubLogo } from "./club-logo";
+import { Icon } from "./icons";
 import { ModeNotice } from "./mode-notice";
 import { StarRating } from "./star-rating";
 
@@ -185,70 +185,87 @@ export function SongList(): ReactElement {
         {songs.map((song, index) => {
           const summary = archive.summaries.get(song.id) ?? NO_RATING;
           const likes = markCount(archive.likes, song.id);
+          const liked = isMarked(archive.likes, song.id, archive.me);
           const reports = reportCount(song);
           return (
-            <li key={song.id}>
-              <Link
-                href={`/#${song.id}`}
-                className="flex items-center gap-3 rounded-xl px-2 py-3 hover:bg-white/5"
-              >
-                {order === "popular" && (
-                  <span className="w-7 shrink-0 text-right text-sm font-bold text-white/40">
-                    {index + 1}
-                  </span>
-                )}
-                <span
-                  className="size-2.5 shrink-0 rounded-full"
-                  style={{ background: `hsl(${genreHue(song.genre)} 70% 55%)` }}
-                  title={song.genre ?? undefined}
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-semibold">
-                    {song.title}
-                    {mediaFor(archive.media, song.id) !== undefined && (
-                      <span className="ml-1.5" title="Video verknüpft">
-                        🎬
-                      </span>
-                    )}
-                    {reports > 0 && (
-                      <span
-                        className="ml-1.5 text-amber-400"
-                        title={`${reports} Anmerkung(en)`}
-                      >
-                        ⚠{reports}
-                      </span>
-                    )}
-                  </span>
-                  <span className="block truncate text-xs text-white/50">
-                    {[
-                      song.number && `Nr. ${song.number}`,
-                      song.genre,
-                      song.occasion,
-                      song.composer,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
+            <li
+              key={song.id}
+              className="flex items-center gap-3 rounded-xl px-2 py-3 hover:bg-white/5"
+            >
+              {order === "popular" && (
+                <span className="w-7 shrink-0 text-right text-sm font-bold text-white/40">
+                  {index + 1}
                 </span>
-                <span className="flex shrink-0 flex-col items-end gap-0.5">
-                  <StarRating
-                    value={
-                      summary.count === 0 ? null : Math.round(summary.average)
-                    }
-                    size="small"
-                  />
-                  <span className="text-[11px] text-white/40">
-                    {summary.count === 0
-                      ? likes > 0
-                        ? ""
-                        : "-"
-                      : `Ø ${summary.average.toFixed(AVERAGE_DIGITS)} (${summary.count})`}
-                    {likes > 0 && (
-                      <span className="ml-1.5 text-rose-400">♥ {likes}</span>
-                    )}
-                  </span>
+              )}
+              {onlySaved && (
+                // In the saved list, the bookmark in front takes a piece off it.
+                <button
+                  type="button"
+                  onClick={() => void mark("saved", song.id, false)}
+                  title="Nicht mehr merken"
+                  aria-label={`${song.title} nicht mehr merken`}
+                  className="shrink-0 text-amber-400 transition-transform hover:text-amber-300 active:scale-90"
+                >
+                  <Icon name="bookmark" size="small" />
+                </button>
+              )}
+              <Link href={`/#${song.id}`} className="min-w-0 flex-1">
+                <span className="block truncate font-semibold">
+                  {song.title}
+                  {mediaFor(archive.media, song.id) !== undefined && (
+                    <span className="ml-1.5" title="Video verknüpft">
+                      🎬
+                    </span>
+                  )}
+                  {reports > 0 && (
+                    <span
+                      className="ml-1.5 text-amber-400"
+                      title={`${reports} Anmerkung(en)`}
+                    >
+                      ⚠{reports}
+                    </span>
+                  )}
+                </span>
+                <span className="block truncate text-xs text-white/50">
+                  {[
+                    song.number && `Nr. ${song.number}`,
+                    song.genre,
+                    song.occasion,
+                    song.composer,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </span>
               </Link>
+              <span className="flex shrink-0 flex-col items-end gap-1">
+                <StarRating
+                  value={archive.mine[song.id] ?? null}
+                  onRate={(stars) => void rate(song.id, stars)}
+                  size="medium"
+                />
+                <span className="flex items-center gap-2 text-xs text-white/50 tabular-nums">
+                  <span>
+                    {summary.count === 0
+                      ? "Ø -"
+                      : `Ø ${summary.average.toFixed(AVERAGE_DIGITS)} (${summary.count})`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void mark("likes", song.id, !liked)}
+                    aria-pressed={liked}
+                    aria-label={
+                      liked ? "Gefällt mir nicht mehr" : "Gefällt mir"
+                    }
+                    title={liked ? "Gefällt mir nicht mehr" : "Gefällt mir"}
+                    className={`flex items-center gap-0.5 transition-transform active:scale-125 ${
+                      liked ? "text-rose-500" : "text-white/50 hover:text-white"
+                    }`}
+                  >
+                    <Icon name="heart" size="small" />
+                    {likes}
+                  </button>
+                </span>
+              </span>
             </li>
           );
         })}

@@ -52,14 +52,21 @@ Stimmen im Schnitt 4,8.
 
 ## Bedienung in Play
 
-Oben drei Feeds:
+Oben drei Feeds. Alle durchlaufen dieselben drei Stufen, eine Stufe beginnt
+erst, wenn die vorige leer ist:
 
-- **Neu** - zuerst nie gesehene Stücke, dann gesehene ohne Like und Sterne,
-  dann solche ohne Sterne
-- **Für dich** - Empfehlungen aus dem eigenen Geschmack (Sparte, Komponist,
-  Bearbeiter, Anlass, Verlag der gelikten, gemerkten und gut bewerteten
-  Stücke) und aus dem, was Leute mit ähnlichem Geschmack mögen und
-  anschauen; noch nicht bewertete Stücke zuerst
+1. **noch nie gesehene** Stücke
+2. gesehene, aber **ohne Sterne und ohne Herz**
+3. der Rest - überwiegend die, die man selbst am besten bewertet oder gelikt
+   hat
+
+Der Feed bestimmt nur die Reihenfolge innerhalb einer Stufe:
+
+- **Neu** - zuletzt hinzugekommene Stücke zuerst (`website/src/data/added.json`,
+  vom Import gepflegt; bei gleichem Datum die höhere Archiv-Nummer)
+- **Für dich** - nach dem eigenen Geschmack (Sparte, Komponist, Bearbeiter,
+  Anlass, Verlag der gelikten, gemerkten und gut bewerteten Stücke) und nach
+  dem, was Leute mit ähnlichem Geschmack mögen und anschauen
 - **Trend** - was allen am besten gefällt (Likes, Gemerkt, Sterne,
   Kommentare, Aufrufe)
 
@@ -75,7 +82,7 @@ beim Swipen sofort und ohne YouTube-Einblendung starten.
   Auswertung Reiter "Meldungen" mit CSV inkl. Stück-ID)
 
 Im Archiv sortiert **Beliebteste** nach Sternen und Herzen zusammen: jedes
-Herz +1, jede Bewertung Sterne minus 3 (5★ = +2, 1★ = −2).
+Herz +1, jede Bewertung Sterne minus 3 (5★ = +2, 1★ = −2, 0★ = −3).
 
 ## Musik / Videos
 

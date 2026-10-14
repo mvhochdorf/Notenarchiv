@@ -22,15 +22,32 @@ const PATHS: Readonly<Record<IconName, string>> = {
   flag: "M5 2.5a1 1 0 0 1 1 1V4h11.5a1 1 0 0 1 .8 1.6L16 9l2.3 3.4a1 1 0 0 1-.8 1.6H6v7.5a1 1 0 1 1-2 0v-18a1 1 0 0 1 1-1z",
 };
 
+/** Sizes of the icons: the feed's button column, and inline in lists. */
+const SIZES = {
+  large: "size-9",
+  small: "size-4",
+} as const;
+
 /**
  * Renders one icon.
  *
- * @param props - which icon
+ * @param props - which icon, and how big
  * @returns the icon as SVG
  */
-export function Icon({ name }: { readonly name: IconName }): ReactElement {
+export function Icon({
+  name,
+  size = "large",
+}: {
+  readonly name: IconName;
+  readonly size?: keyof typeof SIZES;
+}): ReactElement {
   return (
-    <svg viewBox="0 0 24 24" className="size-9" fill="currentColor" aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      className={SIZES[size]}
+      fill="currentColor"
+      aria-hidden
+    >
       <path d={PATHS[name]} />
     </svg>
   );

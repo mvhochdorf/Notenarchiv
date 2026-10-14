@@ -4,7 +4,7 @@
  *
  * @module
  */
-import { shuffle } from "./library";
+import addedDates from "@/data/added.json";
 import { NO_RATING, type AllVotes, type RatingSummary } from "./ratings";
 import type { AllComments, Marks } from "./social";
 import type { Song } from "./song";
@@ -34,13 +34,31 @@ export type Signals = {
 /** Stars that neither raise nor lower the approval of a piece. */
 const NEUTRAL_STARS = 3;
 
-/** The groups of the "new" feed, in the order they are shown. */
-const NEW_GROUPS = {
+/** Most stars, to turn the visitor's own stars into a share. */
+const MAX_STARS = 5;
+
+/**
+ * The stages every feed goes through, in this order.
+ *
+ * @remarks
+ * A stage only starts when the one before is used up: first everything the
+ * visitor has never seen, then what they have seen but neither rated nor
+ * liked, and only then the rest - mostly what they liked best.
+ */
+const STAGES = {
   unseen: 0,
   untouched: 1,
-  unrated: 2,
-  rest: 3,
+  judged: 2,
 } as const;
+
+/**
+ * How the last stage mixes the visitor's own verdict with the feed's own
+ * order - mostly what they rated or liked best.
+ */
+const OWN_VERDICT_SHARE = 0.75;
+
+/** What a like adds to the visitor's own verdict, against full stars. */
+const LIKE_SHARE = 0.5;
 
 /** How much each kind of feature says about a visitor's taste. */
 const FEATURE_WEIGHTS = {
@@ -76,6 +94,9 @@ const TREND_WEIGHTS = {
   vote: 0.5,
 } as const;
 
+/** Weight of chance in the trend: just enough to order equal scores. */
+const TREND_CHANCE = 0.001;
+
 /** Largest value of a 32 bit hash, for turning it into [0, 1). */
 const UINT32_RANGE = 4_294_967_296;
 
@@ -85,6 +106,9 @@ const HASH_PRIME = 16_777_619;
 /** Start value of the string hash (FNV-1a offset). */
 const HASH_OFFSET = 2_166_136_261;
 
+/** When each piece first appeared in the spreadsheet, as `YYYY-MM-DD`. */
+const ADDED: Readonly<Record<string, string>> = addedDates;
+
 /**
  * The pieces in the order of a feed.
  *
@@ -93,6 +117,11 @@ const HASH_OFFSET = 2_166_136_261;
  * @param signals - what visitors did
  * @param seed - fixes the chance in the order for one visit
  * @returns every piece, in feed order
+ * @remarks
+ * Every feed goes through the same {@link STAGES}; the feed only decides the
+ * order within each stage - "new" the newest pieces first, "for you" what
+ * fits the visitor's taste, "trend" what everybody likes. In the last stage
+ * the visitor's own stars and likes weigh most.
  */
 export function rankFeed(
   tab: FeedTab,
@@ -100,62 +129,46 @@ export function rankFeed(
   signals: Signals,
   seed: number,
 ): readonly Song[] {
-  let ranked: readonly Song[];
-  switch (tab) {
-    case "new":
-      ranked = rankNew(songs, signals, seed);
-      break;
-    case "trend":
-      ranked = rankTrend(songs, signals, seed);
-      break;
-    default:
-      ranked = rankForYou(songs, signals, seed);
+  const order = feedOrder(tab, songs, signals, seed);
+  const stages: Song[][] = Object.values(STAGES).map(() => []);
+  for (const song of songs) {
+    stages[stageOf(song, signals)].push(song);
   }
-  return ranked;
+  const byOrder = (a: Song, b: Song) =>
+    (order.get(b.id) ?? 0) - (order.get(a.id) ?? 0);
+  const verdict = (song: Song) =>
+    OWN_VERDICT_SHARE * ownVerdict(song, signals) +
+    (1 - OWN_VERDICT_SHARE) * (order.get(song.id) ?? 0);
+  return [
+    ...stages[STAGES.unseen].sort(byOrder),
+    ...stages[STAGES.untouched].sort(byOrder),
+    ...stages[STAGES.judged].sort((a, b) => verdict(b) - verdict(a)),
+  ];
 }
 
 /**
- * New to the visitor first.
+ * The "new" feed: newest pieces first within each stage.
  *
  * @param songs - the pieces
  * @param signals - what visitors did
- * @param seed - fixes the order within each group
- * @returns pieces never seen, then seen but neither liked nor rated, then
- *   not rated, then the rest - each group shuffled
+ * @param seed - fixes the order of pieces added on the same day
+ * @returns the pieces in feed order
  */
 export function rankNew(
   songs: readonly Song[],
   signals: Signals,
   seed: number,
 ): readonly Song[] {
-  const groups: Song[][] = Object.values(NEW_GROUPS).map(() => []);
-  for (const song of songs) {
-    const seen = signals.views[song.id]?.[signals.me] === true;
-    const liked = signals.likes[song.id]?.[signals.me] === true;
-    const rated = signals.votes[song.id]?.[signals.me] !== undefined;
-    let group: number;
-    if (!seen) {
-      group = NEW_GROUPS.unseen;
-    } else if (!liked && !rated) {
-      group = NEW_GROUPS.untouched;
-    } else if (!rated) {
-      group = NEW_GROUPS.unrated;
-    } else {
-      group = NEW_GROUPS.rest;
-    }
-    groups[group].push(song);
-  }
-  return groups.flatMap((group, index) => shuffle(group, (seed + index) % 1));
+  return rankFeed("new", songs, signals, seed);
 }
 
 /**
- * What the visitor might like.
+ * The "for you" feed: what fits the visitor's taste first within each stage.
  *
  * @param songs - the pieces
  * @param signals - what visitors did
  * @param seed - fixes the chance in the order
- * @returns pieces the visitor has neither liked nor rated yet, best guess
- *   first, then the others
+ * @returns the pieces in feed order
  * @remarks
  * Two guesses are mixed. **Taste**: the categories, composers, arrangers,
  * occasions and publishers of what the visitor liked, saved or rated well
@@ -170,6 +183,117 @@ export function rankForYou(
   signals: Signals,
   seed: number,
 ): readonly Song[] {
+  return rankFeed("forYou", songs, signals, seed);
+}
+
+/**
+ * The "trend" feed: what everybody likes most first within each stage.
+ *
+ * @param songs - the pieces
+ * @param signals - what visitors did
+ * @param seed - fixes the order of pieces that score the same
+ * @returns the pieces in feed order
+ */
+export function rankTrend(
+  songs: readonly Song[],
+  signals: Signals,
+  seed: number,
+): readonly Song[] {
+  return rankFeed("trend", songs, signals, seed);
+}
+
+/** Which stage a piece is in for the visitor. */
+function stageOf(song: Song, signals: Signals): number {
+  const { me } = signals;
+  const liked = signals.likes[song.id]?.[me] === true;
+  const rated = signals.votes[song.id]?.[me] !== undefined;
+  // Liking or rating a piece means having seen it.
+  const seen = signals.views[song.id]?.[me] === true || liked || rated;
+  let stage: number;
+  if (!seen) {
+    stage = STAGES.unseen;
+  } else if (!liked && !rated) {
+    stage = STAGES.untouched;
+  } else {
+    stage = STAGES.judged;
+  }
+  return stage;
+}
+
+/** The visitor's own verdict on a piece, from 0 to 1. */
+function ownVerdict(song: Song, signals: Signals): number {
+  const stars = signals.votes[song.id]?.[signals.me];
+  const liked = signals.likes[song.id]?.[signals.me] === true;
+  const starShare = typeof stars === "number" ? stars / MAX_STARS : LIKE_SHARE;
+  return (starShare + (liked ? LIKE_SHARE : 0)) / (1 + LIKE_SHARE);
+}
+
+/**
+ * Each piece's place in the feed's own order, from 0 (last) to 1 (first).
+ *
+ * @remarks
+ * A share rather than a raw score, so the last stage can mix it with the
+ * visitor's own verdict whatever the feed.
+ */
+function feedOrder(
+  tab: FeedTab,
+  songs: readonly Song[],
+  signals: Signals,
+  seed: number,
+): Map<string, number> {
+  let scores: Map<string, number>;
+  switch (tab) {
+    case "new":
+      scores = newness(songs, seed);
+      break;
+    case "trend": {
+      const trend = trendScores(songs, signals);
+      scores = new Map(
+        songs.map((song) => [
+          song.id,
+          // A touch of chance orders the many pieces nobody touched yet.
+          (trend.get(song.id) ?? 0) + TREND_CHANCE * noise(song.id, seed),
+        ]),
+      );
+      break;
+    }
+    default:
+      scores = tasteScores(songs, signals, seed);
+  }
+  const ranked = [...songs].sort(
+    (a, b) => (scores.get(b.id) ?? 0) - (scores.get(a.id) ?? 0),
+  );
+  return new Map(
+    ranked.map((song, index) => [
+      song.id,
+      1 - index / Math.max(1, songs.length),
+    ]),
+  );
+}
+
+/** How new each piece is: when it was added, then its archive number. */
+function newness(songs: readonly Song[], seed: number): Map<string, number> {
+  const ranked = [...songs].sort(
+    (a, b) =>
+      (ADDED[b.id] ?? "").localeCompare(ADDED[a.id] ?? "") ||
+      archiveNumber(b) - archiveNumber(a) ||
+      noise(b.id, seed) - noise(a.id, seed),
+  );
+  return new Map(ranked.map((song, index) => [song.id, -index]));
+}
+
+/** The archive number as a number, lowest for pieces without one. */
+function archiveNumber(song: Song): number {
+  const number = parseInt(song.number ?? "", 10);
+  return Number.isNaN(number) ? -1 : number;
+}
+
+/** How well each piece fits the visitor's taste, see {@link rankForYou}. */
+function tasteScores(
+  songs: readonly Song[],
+  signals: Signals,
+  seed: number,
+): Map<string, number> {
   const { me } = signals;
   const approval = approvals(signals);
   const mine = approval.get(me) ?? new Map<string, number>();
@@ -178,53 +302,22 @@ export function rankForYou(
   const trend = trendScores(songs, signals);
   const topTrend = Math.max(1, ...trend.values());
 
-  const score = (song: Song) => {
-    let alike = 0;
-    for (const [person, similarity] of similar) {
-      const liked = (approval.get(person)?.get(song.id) ?? 0) > 0;
-      const viewed = signals.views[song.id]?.[person] === true;
-      alike += similarity * (liked ? 1 : viewed ? VIEW_SHARE : 0);
-    }
-    return (
-      MIX.taste * tasteScore(song, taste) +
-      MIX.similar * alike +
-      MIX.popular * ((trend.get(song.id) ?? 0) / topTrend) +
-      MIX.chance * noise(song.id, seed)
-    );
-  };
-
-  const scored = songs.map((song) => ({ song, score: score(song) }));
-  // A like says as much as stars here: the visitor already knows the piece.
-  const judged = (song: Song) =>
-    signals.votes[song.id]?.[me] !== undefined ||
-    signals.likes[song.id]?.[me] === true;
-  const unrated = scored.filter(({ song }) => !judged(song));
-  const rated = scored.filter(({ song }) => judged(song));
-  const byScore = (a: { score: number }, b: { score: number }) =>
-    b.score - a.score;
-  return [...unrated.sort(byScore), ...rated.sort(byScore)].map(
-    ({ song }) => song,
-  );
-}
-
-/**
- * What everybody likes most.
- *
- * @param songs - the pieces
- * @param signals - what visitors did
- * @param seed - fixes the order of pieces that score the same
- * @returns the pieces, most liked first
- */
-export function rankTrend(
-  songs: readonly Song[],
-  signals: Signals,
-  seed: number,
-): readonly Song[] {
-  const trend = trendScores(songs, signals);
-  // Shuffled first, so equal scores - mostly the many zeros - come in a
-  // random order rather than the spreadsheet's.
-  return shuffle(songs, seed).sort(
-    (a, b) => (trend.get(b.id) ?? 0) - (trend.get(a.id) ?? 0),
+  return new Map(
+    songs.map((song) => {
+      let alike = 0;
+      for (const [person, similarity] of similar) {
+        const liked = (approval.get(person)?.get(song.id) ?? 0) > 0;
+        const viewed = signals.views[song.id]?.[person] === true;
+        alike += similarity * (liked ? 1 : viewed ? VIEW_SHARE : 0);
+      }
+      return [
+        song.id,
+        MIX.taste * tasteScore(song, taste) +
+          MIX.similar * alike +
+          MIX.popular * ((trend.get(song.id) ?? 0) / topTrend) +
+          MIX.chance * noise(song.id, seed),
+      ];
+    }),
   );
 }
 

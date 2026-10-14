@@ -4,8 +4,13 @@
  * @module
  */
 
-/** Fewest stars a piece can get. */
-export const MIN_STARS = 1;
+/**
+ * Fewest stars a piece can get.
+ *
+ * @remarks
+ * Zero is a real vote - "not at all" -, not the same as no vote.
+ */
+export const MIN_STARS = 0;
 
 /** Most stars a piece can get. */
 export const MAX_STARS = 5;

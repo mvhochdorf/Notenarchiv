@@ -203,7 +203,7 @@ export async function rate(
       const { database } = await import("./firebase-app");
       const { ref, remove, set } = await import("firebase/database");
       const path = ref(database(), `${ROOT}/ratings/${songId}/${person}`);
-      await (stars === null ? remove(path) : set(path, stars));
+      await written(stars === null ? remove(path) : set(path, stars));
     } else {
       writeStored(LOCAL_RATINGS_KEY, LOCAL_VERSION, state.mine);
     }
@@ -232,9 +232,11 @@ export async function linkMedia(
     const { database } = await import("./firebase-app");
     const { ref, remove, set } = await import("firebase/database");
     const path = ref(database(), `${ROOT}/media/${songId}`);
-    await (media === null
-      ? remove(path)
-      : set(path, { videoId: media.videoId, start: media.start }));
+    await written(
+      media === null
+        ? remove(path)
+        : set(path, { videoId: media.videoId, start: media.start }),
+    );
   } else {
     writeStored(LOCAL_MEDIA_KEY, LOCAL_VERSION, all);
   }
@@ -267,7 +269,7 @@ export async function mark(
       const { database } = await import("./firebase-app");
       const { ref, remove, set } = await import("firebase/database");
       const path = ref(database(), `${ROOT}/${kind}/${songId}/${person}`);
-      await (on ? set(path, true) : remove(path));
+      await written(on ? set(path, true) : remove(path));
     } else {
       writeStored(LOCAL_MARK_KEYS[kind], LOCAL_VERSION, state[kind]);
     }
@@ -296,7 +298,9 @@ export async function addComment(
       const { database } = await import("./firebase-app");
       const { push, ref } = await import("firebase/database");
       // The live listener shows it as soon as the database has it.
-      await push(ref(database(), `${ROOT}/${kind}/${songId}`), comment);
+      await written(
+        push(ref(database(), `${ROOT}/${kind}/${songId}`), comment),
+      );
     } else {
       const id = `${comment.at}-${Math.random().toString(ID_RADIX).slice(2)}`;
       setComment(kind, songId, id, comment);
@@ -319,9 +323,31 @@ export async function deleteComment(
   if (state.mode === "online") {
     const { database } = await import("./firebase-app");
     const { ref, remove } = await import("firebase/database");
-    await remove(ref(database(), `${ROOT}/${kind}/${songId}/${commentId}`));
+    await written(
+      remove(ref(database(), `${ROOT}/${kind}/${songId}/${commentId}`)),
+    );
   } else {
     setComment(kind, songId, commentId, null);
+  }
+}
+
+/**
+ * Waits for a write, and lets a refused one pass with a warning.
+ *
+ * @remarks
+ * The database refuses writes its rules do not allow - mostly because the
+ * rules published in the Firebase console are older than the app. The live
+ * listeners then put back what the database holds, so the page shows the
+ * truth again; an uncaught error would only clutter the console.
+ */
+async function written(write: PromiseLike<unknown>): Promise<void> {
+  try {
+    await write;
+  } catch (error) {
+    console.warn(
+      "Notenarchiv: Speichern abgelehnt - Regeln aus database.rules.json neu veröffentlichen?",
+      error,
+    );
   }
 }
 

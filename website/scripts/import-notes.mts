@@ -8,7 +8,7 @@
  * `src/data/songs.json` and is committed, so the site builds without Excel.
  */
 import ExcelJS from "exceljs";
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { songId, uniqueIds, type Song } from "../src/lib/song";
 
@@ -19,6 +19,9 @@ const SOURCE = fileURLToPath(new URL("../../Notenliste.xlsx", import.meta.url));
 const TARGET = fileURLToPath(
   new URL("../src/data/songs.json", import.meta.url),
 );
+
+/** When each piece first appeared, for the "new" feed. */
+const ADDED = fileURLToPath(new URL("../src/data/added.json", import.meta.url));
 
 /** Spreadsheet header for each song field. */
 const COLUMNS = {
@@ -79,6 +82,33 @@ async function main(): Promise<void> {
   const songs: Song[] = rows.map((row, index) => ({ id: ids[index], ...row }));
   writeFileSync(TARGET, `${JSON.stringify(songs, null, JSON_INDENT)}\n`);
   console.log(`${songs.length} Stücke nach ${TARGET} geschrieben.`);
+  noteAdded(songs);
+}
+
+/**
+ * Notes the day each piece first showed up in the spreadsheet.
+ *
+ * @remarks
+ * The "new" feed puts the newest pieces first. Pieces already noted keep
+ * their day; only pieces imported for the first time get today's.
+ */
+function noteAdded(songs: readonly Song[]): void {
+  const added = existsSync(ADDED)
+    ? (JSON.parse(readFileSync(ADDED, "utf8")) as Record<string, string>)
+    : {};
+  const today = new Date().toISOString().slice(0, "YYYY-MM-DD".length);
+  let fresh = 0;
+  for (const song of songs) {
+    if (added[song.id] === undefined) {
+      added[song.id] = today;
+      fresh += 1;
+    }
+  }
+  const sorted = Object.fromEntries(
+    Object.entries(added).sort(([a], [b]) => a.localeCompare(b)),
+  );
+  writeFileSync(ADDED, `${JSON.stringify(sorted, null, JSON_INDENT)}\n`);
+  console.log(`${fresh} Stücke neu im Archiv.`);
 }
 
 /** A cell value as trimmed text, or null when empty. */

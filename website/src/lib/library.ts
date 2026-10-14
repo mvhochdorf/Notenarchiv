@@ -174,7 +174,8 @@ export function sortSongs(
  *   middle
  * @remarks
  * A five-star vote counts +2 - as much as two hearts -, four stars +1, three
- * stars nothing, and a poor vote takes points away: 2 stars -1, 1 star -2.
+ * stars nothing, and a poor vote takes points away: 2 stars -1, 1 star -2,
+ * zero stars -3.
  * So a piece many people rated well or liked leads, and a piece nobody likes
  * cannot climb just by being rated often.
  */

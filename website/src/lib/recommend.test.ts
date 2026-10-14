@@ -50,28 +50,59 @@ function signals(change: Partial<Signals>): Signals {
 
 const ids = (songs: readonly Song[]) => songs.map((piece) => piece.id);
 
-describe("rankNew", () => {
-  it("puts unseen first, then seen without like or stars, then unrated", () => {
-    const ranked = rankNew(
+describe("stages", () => {
+  const seenSome = signals({
+    views: { march1: { me: true }, choral1: { me: true } },
+    likes: { march2: { me: true } },
+    votes: { polka1: { me: 4 } },
+  });
+
+  it("puts unseen first, then seen but untouched, then liked or rated", () => {
+    for (const rank of [rankNew, rankForYou, rankTrend]) {
+      const order = ids(rank(SONGS, seenSome, 0.3));
+      expect(order[0]).toBe("choral2");
+      expect(new Set(order.slice(1, 3))).toEqual(
+        new Set(["march1", "choral1"]),
+      );
+      expect(new Set(order.slice(3))).toEqual(new Set(["march2", "polka1"]));
+    }
+  });
+
+  it("ends with what I liked or rated best", () => {
+    const ranked = rankTrend(
       SONGS,
       signals({
-        views: {
-          march1: { me: true },
-          march2: { me: true },
-          polka1: { me: true },
-          choral1: { me: true },
-        },
-        likes: { march2: { me: true } },
-        votes: { polka1: { me: 4 } },
+        votes: { march1: { me: 1 }, march2: { me: 5 }, polka1: { me: 3 } },
       }),
       0.3,
     );
-    expect(ids(ranked)).toEqual([
-      "choral2",
-      "choral1",
-      "march1",
-      "march2",
-      "polka1",
+    expect(ids(ranked).slice(-3)).toEqual(["march2", "polka1", "march1"]);
+  });
+
+  it("never lets a popular seen piece jump ahead of an unseen one", () => {
+    const ranked = rankTrend(
+      SONGS,
+      signals({
+        views: { march1: { me: true } },
+        likes: { march1: { a: true, b: true, c: true } },
+      }),
+      0.3,
+    );
+    expect(ids(ranked).at(-1)).toBe("march1");
+  });
+});
+
+describe("rankNew", () => {
+  it("puts the newest pieces first", () => {
+    const numbered = [
+      { ...song("old", "Märsche"), number: "100" },
+      { ...song("newest", "Märsche"), number: "300" },
+      { ...song("newer", "Märsche"), number: "200a" },
+    ];
+    expect(ids(rankNew(numbered, signals({}), 0.3))).toEqual([
+      "newest",
+      "newer",
+      "old",
     ]);
   });
 });

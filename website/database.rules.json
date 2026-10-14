@@ -6,7 +6,7 @@
         "$songId": {
           "$personId": {
             ".write": "auth != null && root.child('notenarchiv/users/' + auth.uid + '/personId').val() === $personId",
-            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 5 && newData.val() % 1 === 0"
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5 && newData.val() % 1 === 0"
           }
         }
       },

@@ -19,6 +19,9 @@ import { VideoPlayer } from "./video-player";
 /** Digits shown of an average. */
 const AVERAGE_DIGITS = 1;
 
+/** How long the note after sharing stays. */
+const SHARE_NOTE_MS = 6000;
+
 /** How long the hint after saving a piece stays. */
 const SAVED_HINT_MS = 3000;
 
@@ -29,6 +32,8 @@ export type CardSocial = {
   readonly saved: boolean;
   readonly saves: number;
   readonly comments: number;
+  /** Notes about something wrong with the piece. */
+  readonly reports: number;
 };
 
 /**
@@ -72,6 +77,8 @@ export function SongCard({
   readonly onEnded: () => void;
 }): ReactElement {
   const [savedHint, setSavedHint] = useState(false);
+  // After sharing: "copied", or the address to copy by hand.
+  const [shared, setShared] = useState<string | null>(null);
   const hue = genreHue(song.genre);
   const people = [
     song.composer && `Komponist: ${song.composer}`,
@@ -193,16 +200,44 @@ export function SongCard({
             label="Teilen"
             icon="share"
             title="Teilen"
-            onClick={() => void share(song)}
+            onClick={() => {
+              const url = `${window.location.origin}${window.location.pathname}#${song.id}`;
+              void share(url, song.title).then((outcome) => {
+                setShared(outcome === "manual" ? url : outcome);
+                setTimeout(() => setShared(null), SHARE_NOTE_MS);
+              });
+            }}
           />
           <ActionButton
-            label="Melden"
+            label={
+              social.reports === 0 ? "Melden" : `Melden (${social.reports})`
+            }
             icon="flag"
-            title="Etwas stimmt nicht - melden"
+            title={
+              social.reports === 0
+                ? "Etwas stimmt nicht - melden"
+                : `${social.reports} Meldung(en) ansehen oder melden`
+            }
             onClick={onReport}
           />
         </div>
       </div>
+      {shared === "copied" && (
+        <p className="pointer-events-none absolute inset-x-6 top-1/3 z-30 rounded-2xl bg-black/75 px-4 py-3 text-center text-sm backdrop-blur">
+          🔗 Link kopiert - zum Einfügen in WhatsApp, E-Mail ...
+        </p>
+      )}
+      {shared !== null && shared !== "copied" && shared !== "shared" && (
+        <div className="absolute inset-x-6 top-1/3 z-30 space-y-2 rounded-2xl bg-black/85 p-4 text-sm backdrop-blur">
+          <p>Link zum Kopieren:</p>
+          <input
+            readOnly
+            value={shared}
+            onFocus={(event) => event.target.select()}
+            className="w-full rounded-lg bg-zinc-800 px-2 py-1.5 text-xs"
+          />
+        </div>
+      )}
       {savedHint && (
         <p className="pointer-events-none absolute inset-x-6 top-1/3 z-30 rounded-2xl bg-black/75 px-4 py-3 text-center text-sm backdrop-blur">
           🔖 Gemerkt - alle gemerkten Stücke findest du im <b>Archiv</b> unter{" "}
@@ -300,17 +335,61 @@ function ActionButton({
   );
 }
 
-/** Shares the piece's address, or copies it where sharing is not offered. */
-async function share(song: Song): Promise<void> {
-  const url = `${window.location.origin}${window.location.pathname}#${song.id}`;
-  try {
-    if (typeof navigator.share === "function") {
-      await navigator.share({ title: song.title, url });
-    } else {
-      await navigator.clipboard.writeText(url);
-      window.alert("Link kopiert");
+/** How sharing went. */
+type ShareOutcome = "shared" | "copied" | "manual";
+
+/**
+ * Shares the piece's address: the device's share menu where there is one,
+ * else copied to the clipboard.
+ *
+ * @param url - the address to share
+ * @param title - the piece's title, for the share menu
+ * @returns what happened - "manual" when neither worked and the visitor has
+ *   to copy the address themselves
+ * @remarks
+ * A page opened over plain `http` - the dev server reached from a phone by
+ * its network address - has neither a share menu nor the clipboard API, so
+ * the old copy command is the last resort.
+ */
+async function share(url: string, title: string): Promise<ShareOutcome> {
+  let outcome: ShareOutcome | null = null;
+  if (typeof navigator.share === "function") {
+    try {
+      await navigator.share({ title, url });
+      outcome = "shared";
+    } catch (error) {
+      // Closing the menu is a choice, not a failure.
+      if ((error as Error).name === "AbortError") {
+        outcome = "shared";
+      }
     }
-  } catch {
-    // Cancelled by the visitor - nothing to do.
   }
+  if (outcome === null) {
+    try {
+      await navigator.clipboard.writeText(url);
+      outcome = "copied";
+    } catch {
+      outcome = copyByCommand(url) ? "copied" : "manual";
+    }
+  }
+  return outcome;
+}
+
+/** Copies a text the old way, which also works without `https`. */
+function copyByCommand(text: string): boolean {
+  const field = document.createElement("textarea");
+  field.value = text;
+  field.setAttribute("readonly", "");
+  field.style.position = "fixed";
+  field.style.opacity = "0";
+  document.body.append(field);
+  field.select();
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } catch {
+    // Not allowed here either.
+  }
+  field.remove();
+  return copied;
 }

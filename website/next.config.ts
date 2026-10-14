@@ -24,6 +24,10 @@ const nextConfig: NextConfig = {
   images: { unoptimized: true },
   // Emit out/index.html style paths, which static hosts resolve directly.
   trailingSlash: true,
+  // Lets phones and tablets in the home network open the dev server by its
+  // address (e.g. http://192.168.178.73:3010) - Next.js blocks that by
+  // default. Development only; the published site is static.
+  allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "*.local"],
 };
 
 export default nextConfig;
