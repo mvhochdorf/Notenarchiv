@@ -27,6 +27,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      wartung:
+        description: "Wartungsmodus: nur die Wartungsseite veröffentlichen"
+        type: boolean
+        default: false
 
 #------------------------------------------------------------------------------
 # Jobs
@@ -78,6 +83,9 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          # Only a manual run with the box ticked builds the maintenance page;
+          # every push builds the normal app again.
+          NEXT_PUBLIC_MAINTENANCE: ${{ inputs.wartung && 'true' || 'false' }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5

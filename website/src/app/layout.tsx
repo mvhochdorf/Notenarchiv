@@ -8,6 +8,7 @@ import { Geist } from "next/font/google";
 import type { ReactElement, ReactNode } from "react";
 import "./globals.css";
 import { BottomNav } from "@/components/bottom-nav";
+import { MaintenanceGate } from "@/components/maintenance-gate";
 import { NameGate } from "@/components/name-gate";
 
 const geistSans = Geist({
@@ -36,9 +37,11 @@ export default function RootLayout({
   return (
     <html lang="de" className={`${geistSans.variable} antialiased`}>
       <body className="flex h-dvh flex-col overflow-hidden font-[family-name:var(--font-geist-sans)]">
-        <main className="min-h-0 flex-1">{children}</main>
-        <BottomNav />
-        <NameGate />
+        <MaintenanceGate>
+          <main className="min-h-0 flex-1">{children}</main>
+          <BottomNav />
+          <NameGate />
+        </MaintenanceGate>
       </body>
     </html>
   );

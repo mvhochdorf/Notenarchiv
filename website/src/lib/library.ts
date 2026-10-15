@@ -8,8 +8,23 @@ import { NO_RATING, type RatingSummary } from "./ratings";
 import type { Marks } from "./social";
 import type { Song } from "./song";
 
-/** Every piece in the archive, in spreadsheet order. */
-export const SONGS: readonly Song[] = songData;
+/**
+ * Categories hidden from everybody.
+ *
+ * @remarks
+ * The pieces stay in the spreadsheet, keep their videos in youtube.json and
+ * their ratings in the database - they are only left out of the app. Remove
+ * a category here to show it again.
+ */
+export const HIDDEN_GENRES: ReadonlySet<string> = new Set(["Choral"]);
+
+/** Every piece in the spreadsheet, hidden ones included, in its order. */
+export const ALL_SONGS: readonly Song[] = songData;
+
+/** The pieces the app shows, in spreadsheet order. */
+export const SONGS: readonly Song[] = ALL_SONGS.filter(
+  (song) => song.genre === null || !HIDDEN_GENRES.has(song.genre),
+);
 
 /** How the pieces can be ordered. */
 export type SortOrder = "random" | "popular" | "unrated" | "title" | "number";

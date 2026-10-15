@@ -43,8 +43,14 @@ const WAITING_RATE = 0.25;
 /** How far a player loaded ahead may run past its start before it reloads. */
 const MAX_DRIFT_S = 3;
 
-/** How long a video may take to start before its sound counts as blocked. */
-const SOUND_CHECK_MS = 2500;
+/** How often the video on screen is checked for standing still. */
+const KEEP_PLAYING_MS = 1000;
+
+/**
+ * Checks in a row a video may stand still before it is started silently -
+ * then its sound is taken to be blocked until the first touch.
+ */
+const SILENT_AFTER_TRIES = 3;
 
 /** Longest pause between the two taps of a double tap. */
 const DOUBLE_TAP_MS = 280;
@@ -65,6 +71,7 @@ const SECOND_DIGITS = 2;
 const PLAYER = {
   ended: 0,
   playing: 1,
+  buffering: 3,
 } as const;
 
 /** What the player last reported. */
@@ -174,6 +181,10 @@ export function VideoPlayer({
   const holdTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastTap = useRef(0);
   const held = useRef(false);
+  // Paused on purpose by a tap - then the video is left standing.
+  const userPaused = useRef(false);
+  // How many checks in a row found the video standing still.
+  const stalls = useRef(0);
 
   /** Sends a command to the player. */
   const steer = (func: string, args: readonly unknown[] = []) => {
@@ -237,18 +248,47 @@ export function VideoPlayer({
     }));
   };
 
-  // A browser that allows no sound before the first touch does not start a
-  // video with sound at all; it then starts anew, silent, until a touch.
-  const checkSound = useEffectEvent(() => {
-    if (active && !muted && lastState.current !== PLAYER.playing) {
-      reload(plan.start, true);
-      onSoundBlocked();
+  // While a card is on screen, a video that stands still although nobody
+  // paused it is started again - a player loaded ahead may not have started
+  // yet, and some phone browsers stop a video when it gets its sound by
+  // script. If it will not play with sound, the browser wants a touch first:
+  // it then plays silently until one.
+  const keepPlaying = useEffectEvent(() => {
+    const state = lastState.current;
+    const standing =
+      state !== PLAYER.playing &&
+      state !== PLAYER.buffering &&
+      state !== PLAYER.ended;
+    if (!standing || userPaused.current) {
+      stalls.current = 0;
+    } else {
+      stalls.current += 1;
+      if (stalls.current >= SILENT_AFTER_TRIES && !muted) {
+        stalls.current = 0;
+        steer("mute");
+        steer("playVideo");
+        onSoundBlocked();
+      } else {
+        // Silent is said again each time: a player still loading may have
+        // missed it, and without it the browser would refuse to play.
+        if (muted) {
+          steer("mute");
+        }
+        steer("setPlaybackRate", [1]);
+        steer("playVideo");
+      }
     }
   });
   useEffect(() => {
-    const timer = setTimeout(checkSound, SOUND_CHECK_MS);
-    return () => clearTimeout(timer);
-  }, []);
+    let timer: ReturnType<typeof setInterval> | undefined;
+    if (active) {
+      // Coming back to a card plays it again, even if it was paused.
+      stalls.current = 0;
+      userPaused.current = false;
+      timer = setInterval(keepPlaying, KEEP_PLAYING_MS);
+    }
+    return () => clearInterval(timer);
+  }, [active]);
 
   const onMuted = useEffectEvent((isMuted: boolean) => {
     // Players off screen stay silent until their card comes on screen.
@@ -305,9 +345,17 @@ export function VideoPlayer({
     if (muted) {
       // The browser started the video silently; the first tap asks for sound.
       onUnmute();
-    } else if (playing) {
+      userPaused.current = false;
+      steer("playVideo");
+    } else if (
+      lastState.current === PLAYER.playing ||
+      lastState.current === PLAYER.buffering
+    ) {
+      // Loading counts as playing here: the tap means "stop".
+      userPaused.current = true;
       steer("pauseVideo");
-    } else if (report.started) {
+    } else {
+      userPaused.current = false;
       steer("playVideo");
     }
   };

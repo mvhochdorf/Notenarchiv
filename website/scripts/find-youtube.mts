@@ -203,7 +203,9 @@ async function main(): Promise<void> {
       const entry = links[song.id];
       return (
         entry === undefined ||
-        (retry && !("videoId" in entry)) ||
+        (retry &&
+          !("videoId" in entry) &&
+          !(entry.label ?? "").includes(BY_HAND)) ||
         (upgrade &&
           "videoId" in entry &&
           !isBandLabel(entry.label ?? "") &&

@@ -20,6 +20,7 @@ import {
   type ArchiveState,
   type NoteKind,
 } from "@/lib/archive-store";
+import { clearPlayQueue, queuedFor } from "@/lib/archive-view";
 import { reshuffle, useHashSongId, useVisitSeed } from "@/lib/browser-values";
 import {
   categories,
@@ -87,6 +88,8 @@ export function Feed(): ReactElement {
   // the feed start silent, see VideoPlayer's onSoundBlocked.
   const [muted, setMuted] = useState(false);
   const [shownHash, setShownHash] = useState<string | null>(null);
+  // Whether the order came from the archive list rather than a tab.
+  const [fromArchive, setFromArchive] = useState(false);
   const [editing, setEditing] = useState<Song | null>(null);
   const [commenting, setCommenting] = useState<{
     song: Song;
@@ -98,14 +101,30 @@ export function Feed(): ReactElement {
   if (frozen === null && seed !== null && hashId !== null && archive.ready) {
     // Set while rendering, as React allows for state derived from props:
     // the first order is fixed as soon as it can be worked out.
-    setFrozen(buildList(choice, show, archive, seed, hashId || null));
+    // Opened from the archive: go through its list, as shown there.
+    const fromList = songsOf(hashId === "" ? null : queuedFor(hashId));
+    setFrozen(
+      fromList ?? buildList(choice, show, archive, seed, hashId || null),
+    );
+    setFromArchive(fromList !== undefined);
     setShownHash(hashId);
-  } else if (frozen !== null && hashId !== null && hashId !== shownHash) {
+  } else if (
+    frozen !== null &&
+    hashId !== null &&
+    hashId !== "" &&
+    hashId !== shownHash
+  ) {
     // A piece chosen in the archive arrives in the address only after the
-    // feed has been laid out - put it first then.
+    // feed has been laid out - then go through the archive's list from it,
+    // or, for a shared link, put the piece first.
     setShownHash(hashId);
+    const fromList = songsOf(queuedFor(hashId));
     const first = SONGS.find((song) => song.id === hashId);
-    if (first !== undefined && frozen[0] !== first) {
+    if (fromList !== undefined) {
+      setFrozen(fromList);
+      setFromArchive(true);
+      setActive(0);
+    } else if (first !== undefined && frozen[0] !== first) {
       setFrozen([first, ...frozen.filter((song) => song !== first)]);
       setActive(0);
     }
@@ -128,6 +147,16 @@ export function Feed(): ReactElement {
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: 0 });
+    // The piece in the address has served its purpose: without it, a reload
+    // brings back the usual feed.
+    if (shownHash) {
+      clearPlayQueue();
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + window.location.search,
+      );
+    }
   }, [shownHash]);
 
   useEffect(() => {
@@ -175,6 +204,7 @@ export function Feed(): ReactElement {
 
     const choose = (next: FeedChoice) => {
       setChoice(next);
+      setFromArchive(false);
       setFrozen(buildList(next, show, archive, reshuffle(), null));
       setActive(0);
       scroller.current?.scrollTo({ top: 0 });
@@ -249,6 +279,7 @@ export function Feed(): ReactElement {
         <FilterBar
           choice={choice}
           onChoose={choose}
+          fromArchive={fromArchive}
           mode={archive.mode}
           genres={categories(
             SONGS.filter((song) => isShown(show, archive.media, song)),
@@ -285,11 +316,14 @@ export function Feed(): ReactElement {
 function FilterBar({
   choice,
   onChoose,
+  fromArchive,
   mode,
   genres,
 }: {
   readonly choice: FeedChoice;
   readonly onChoose: (choice: FeedChoice) => void;
+  /** Whether the pieces come in the archive's order; no tab is chosen then. */
+  readonly fromArchive: boolean;
   readonly mode: ArchiveState["mode"];
   readonly genres: readonly Category[];
 }): ReactElement {
@@ -304,10 +338,12 @@ function FilterBar({
             <button
               key={tab}
               type="button"
-              aria-current={choice.tab === tab ? "page" : undefined}
+              aria-current={
+                !fromArchive && choice.tab === tab ? "page" : undefined
+              }
               onClick={() => onChoose({ ...choice, tab })}
               className={`relative pb-1.5 text-base font-bold whitespace-nowrap [text-shadow:0_1px_4px_rgb(0_0_0/0.8)] ${
-                choice.tab === tab
+                !fromArchive && choice.tab === tab
                   ? "text-white after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded after:bg-white"
                   : "text-white/60 hover:text-white/90"
               }`}
@@ -332,9 +368,21 @@ function FilterBar({
           ))}
         </select>
       </div>
+      {fromArchive && (
+        <p className="mx-auto w-fit rounded-full bg-black/60 px-3 py-1 text-xs font-semibold backdrop-blur">
+          ☰ Reihenfolge aus dem Archiv
+        </p>
+      )}
       <ModeNotice mode={mode} />
     </div>
   );
+}
+
+/** The pieces of a list of song ids, or undefined without a list. */
+function songsOf(ids: readonly string[] | null): Song[] | undefined {
+  return ids
+    ?.map((id) => SONGS.find((song) => song.id === id))
+    .filter((song) => song !== undefined);
 }
 
 /** The feed's pieces for a choice, a linked piece first if there is one. */

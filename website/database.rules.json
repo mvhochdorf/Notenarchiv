@@ -5,7 +5,7 @@
         ".read": "auth != null",
         "$songId": {
           "$personId": {
-            ".write": "auth != null && root.child('notenarchiv/users/' + auth.uid + '/personId').val() === $personId",
+            ".write": "auth != null && root.child('notenarchiv/maintenance/on').val() !== true && root.child('notenarchiv/users/' + auth.uid + '/personId').val() === $personId",
             ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5 && newData.val() % 1 === 0"
           }
         }
@@ -13,7 +13,7 @@
       "media": {
         ".read": "auth != null",
         "$songId": {
-          ".write": "auth != null",
+          ".write": "auth != null && root.child('notenarchiv/maintenance/on').val() !== true",
           ".validate": "newData.hasChildren(['videoId', 'start'])",
           "videoId": {
             ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{11}$/)"
@@ -30,7 +30,7 @@
         ".read": "auth != null",
         "$songId": {
           "$personId": {
-            ".write": "auth != null && root.child('notenarchiv/users/' + auth.uid + '/personId').val() === $personId",
+            ".write": "auth != null && root.child('notenarchiv/maintenance/on').val() !== true && root.child('notenarchiv/users/' + auth.uid + '/personId').val() === $personId",
             ".validate": "newData.val() === true"
           }
         }
@@ -39,7 +39,7 @@
         ".read": "auth != null",
         "$songId": {
           "$personId": {
-            ".write": "auth != null && root.child('notenarchiv/users/' + auth.uid + '/personId').val() === $personId",
+            ".write": "auth != null && root.child('notenarchiv/maintenance/on').val() !== true && root.child('notenarchiv/users/' + auth.uid + '/personId').val() === $personId",
             ".validate": "newData.val() === true"
           }
         }
@@ -48,7 +48,7 @@
         ".read": "auth != null",
         "$songId": {
           "$commentId": {
-            ".write": "auth != null && ((!data.exists() && newData.child('person').val() === root.child('notenarchiv/users/' + auth.uid + '/personId').val()) || (data.exists() && !newData.exists() && data.child('person').val() === root.child('notenarchiv/users/' + auth.uid + '/personId').val()))",
+            ".write": "auth != null && root.child('notenarchiv/maintenance/on').val() !== true && ((!data.exists() && newData.child('person').val() === root.child('notenarchiv/users/' + auth.uid + '/personId').val()) || (data.exists() && !newData.exists() && data.child('person').val() === root.child('notenarchiv/users/' + auth.uid + '/personId').val()))",
             ".validate": "newData.hasChildren(['person', 'name', 'text', 'at'])",
             "name": {
               ".validate": "newData.isString() && newData.val().length <= 81"
@@ -72,7 +72,7 @@
         ".read": "auth != null",
         "$songId": {
           "$personId": {
-            ".write": "auth != null && root.child('notenarchiv/users/' + auth.uid + '/personId').val() === $personId",
+            ".write": "auth != null && root.child('notenarchiv/maintenance/on').val() !== true && root.child('notenarchiv/users/' + auth.uid + '/personId').val() === $personId",
             ".validate": "newData.val() === true"
           }
         }
@@ -80,7 +80,7 @@
       "users": {
         ".read": "auth != null",
         "$uid": {
-          ".write": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && root.child('notenarchiv/maintenance/on').val() !== true && auth.uid === $uid",
           ".validate": "newData.hasChildren(['firstName', 'lastName', 'personId', 'at'])",
           "firstName": {
             ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
@@ -103,7 +103,7 @@
         ".read": "auth != null",
         "$songId": {
           "$commentId": {
-            ".write": "auth != null && ((!data.exists() && newData.child('person').val() === root.child('notenarchiv/users/' + auth.uid + '/personId').val()) || (data.exists() && !newData.exists() && data.child('person').val() === root.child('notenarchiv/users/' + auth.uid + '/personId').val()))",
+            ".write": "auth != null && root.child('notenarchiv/maintenance/on').val() !== true && ((!data.exists() && newData.child('person').val() === root.child('notenarchiv/users/' + auth.uid + '/personId').val()) || (data.exists() && !newData.exists() && data.child('person').val() === root.child('notenarchiv/users/' + auth.uid + '/personId').val()))",
             ".validate": "newData.hasChildren(['person', 'name', 'text', 'at'])",
             "name": {
               ".validate": "newData.isString() && newData.val().length <= 81"
@@ -121,6 +121,16 @@
               ".validate": false
             }
           }
+        }
+      },
+      "maintenance": {
+        ".read": true,
+        ".write": false,
+        "on": {
+          ".validate": "newData.isBoolean()"
+        },
+        "message": {
+          ".validate": "newData.isString()"
         }
       }
     }

@@ -6,17 +6,21 @@
 "use client";
 
 import Link from "next/link";
-import { useDeferredValue, useState, type ReactElement } from "react";
+import { useDeferredValue, type ReactElement } from "react";
 import { mark, rate, useArchive } from "@/lib/archive-store";
+import {
+  changeArchiveView,
+  queueForPlay,
+  useArchiveView,
+  type ArchiveScope,
+} from "@/lib/archive-view";
 import { useVisitSeed } from "@/lib/browser-values";
 import {
   categories,
   filterSongs,
-  NO_FILTER,
   SONGS,
   SORT_LABELS,
   sortSongs,
-  type SongFilter,
   type SortOrder,
 } from "@/lib/library";
 import { mediaFor } from "@/lib/media";
@@ -37,6 +41,13 @@ const LIST_ORDERS: readonly SortOrder[] = [
   "unrated",
 ];
 
+/** The buttons above the list, by the scope they choose. */
+const SCOPES: readonly { scope: ArchiveScope; label: string }[] = [
+  { scope: "all", label: "Alle" },
+  { scope: "saved", label: "🔖 Gespeichert" },
+  { scope: "reported", label: "⚠ Anmerkungen" },
+];
+
 /** Digits shown of an average. */
 const AVERAGE_DIGITS = 1;
 
@@ -44,6 +55,10 @@ const AVERAGE_DIGITS = 1;
  * Renders the list with its search and filters.
  *
  * @returns the archive page content
+ * @remarks
+ * Filters and order are kept between visits (see archive-view.ts). Opening
+ * a piece hands the list's order to Play, so swiping on goes through the
+ * list as shown here.
  */
 export function SongList(): ReactElement {
   const archive = useArchive();
@@ -52,16 +67,27 @@ export function SongList(): ReactElement {
   const genres = categories(shown, "genre");
   const occasions = categories(shown, "occasion");
   const seed = useVisitSeed() ?? 0;
-  const [filter, setFilter] = useState<SongFilter>(NO_FILTER);
-  const [order, setOrder] = useState<SortOrder>("title");
-  const [onlySaved, setOnlySaved] = useState(false);
-  const [onlyReported, setOnlyReported] = useState(false);
-  const deferredFilter = useDeferredValue(filter);
+  const view = useArchiveView();
+  const { order, scope } = view;
+  const onlySaved = scope === "saved";
+  const onlyReported = scope === "reported";
+  // A remembered category that no longer exists - e.g. one hidden since -
+  // counts as "all", so the list matches what the selects show.
+  const genre = genres.some((entry) => entry.name === view.genre)
+    ? view.genre
+    : null;
+  const occasion = occasions.some((entry) => entry.name === view.occasion)
+    ? view.occasion
+    : null;
+  const deferredFilter = useDeferredValue({ ...view, genre, occasion });
   const isSaved = (song: Song) => isMarked(archive.saved, song.id, archive.me);
   const reportCount = (song: Song) =>
     Object.keys(archive.reports[song.id] ?? {}).length;
-  const savedCount = shown.filter(isSaved).length;
-  const reportedCount = shown.filter((song) => reportCount(song) > 0).length;
+  const counts: Readonly<Record<ArchiveScope, number>> = {
+    all: shown.length,
+    saved: shown.filter(isSaved).length,
+    reported: shown.filter((song) => reportCount(song) > 0).length,
+  };
 
   const songs = sortSongs(
     filterSongs(shown, deferredFilter).filter(
@@ -97,54 +123,59 @@ export function SongList(): ReactElement {
         </div>
         <input
           type="search"
-          value={filter.query}
-          onChange={(event) =>
-            setFilter({ ...filter, query: event.target.value })
-          }
+          value={view.query}
+          onChange={(event) => changeArchiveView({ query: event.target.value })}
           placeholder="Titel, Komponist, Nummer ..."
           className="w-full rounded-xl bg-zinc-800 px-4 py-2.5 outline-none focus:ring-2 focus:ring-amber-400"
         />
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-          <button
-            type="button"
-            className={chipClass(filter.genre === null)}
-            onClick={() => setFilter({ ...filter, genre: null })}
-          >
-            Alle ({shown.length})
-          </button>
-          <button
-            type="button"
-            aria-pressed={onlySaved}
-            className={chipClass(onlySaved)}
-            onClick={() => setOnlySaved(!onlySaved)}
-          >
-            🔖 Gespeichert ({savedCount})
-          </button>
-          <button
-            type="button"
-            aria-pressed={onlyReported}
-            className={chipClass(onlyReported)}
-            onClick={() => setOnlyReported(!onlyReported)}
-          >
-            ⚠ Anmerkungen ({reportedCount})
-          </button>
-          {genres.map((genre) => (
+        <div className="flex gap-2">
+          {SCOPES.map((option) => (
             <button
-              key={genre.name}
+              key={option.scope}
               type="button"
-              className={chipClass(filter.genre === genre.name)}
-              onClick={() => setFilter({ ...filter, genre: genre.name })}
+              aria-pressed={scope === option.scope}
+              className={chipClass(scope === option.scope)}
+              onClick={() => changeArchiveView({ scope: option.scope })}
             >
-              {genre.name} ({genre.count})
+              {option.label} ({counts[option.scope]})
             </button>
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select
-            aria-label="Anlass"
-            value={filter.occasion ?? ""}
+            aria-label="Sortierung"
+            value={order}
             onChange={(event) =>
-              setFilter({ ...filter, occasion: event.target.value || null })
+              changeArchiveView({ order: event.target.value as SortOrder })
+            }
+            className={selectClass}
+          >
+            {LIST_ORDERS.map((option) => (
+              <option key={option} value={option}>
+                {SORT_LABELS[option]}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Sparte"
+            value={genre ?? ""}
+            onChange={(event) =>
+              changeArchiveView({ genre: event.target.value || null })
+            }
+            className={selectClass}
+          >
+            <option value="">Alle Sparten</option>
+            {genres.map((genre) => (
+              <option key={genre.name} value={genre.name}>
+                {genre.name} ({genre.count})
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Anlass"
+            value={occasion ?? ""}
+            onChange={(event) =>
+              changeArchiveView({ occasion: event.target.value || null })
             }
             className={selectClass}
           >
@@ -152,18 +183,6 @@ export function SongList(): ReactElement {
             {occasions.map((occasion) => (
               <option key={occasion.name} value={occasion.name}>
                 {occasion.name} ({occasion.count})
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Sortierung"
-            value={order}
-            onChange={(event) => setOrder(event.target.value as SortOrder)}
-            className={selectClass}
-          >
-            {LIST_ORDERS.map((option) => (
-              <option key={option} value={option}>
-                {SORT_LABELS[option]}
               </option>
             ))}
           </select>
@@ -181,6 +200,25 @@ export function SongList(): ReactElement {
         </div>
       </header>
 
+      {songs.length === 0 && (
+        <div className="space-y-3 px-4 py-10 text-center text-white/60">
+          <p>Keine Stücke für diese Auswahl.</p>
+          <button
+            type="button"
+            onClick={() =>
+              changeArchiveView({
+                query: "",
+                genre: null,
+                occasion: null,
+                scope: "all",
+              })
+            }
+            className="rounded-full bg-amber-400 px-4 py-2 text-sm font-semibold text-black"
+          >
+            Filter zurücksetzen
+          </button>
+        </div>
+      )}
       <ul className="divide-y divide-white/5 px-2 pb-4">
         {songs.map((song, index) => {
           const summary = archive.summaries.get(song.id) ?? NO_RATING;
@@ -209,7 +247,17 @@ export function SongList(): ReactElement {
                   <Icon name="bookmark" size="small" />
                 </button>
               )}
-              <Link href={`/#${song.id}`} className="min-w-0 flex-1">
+              <Link
+                href={`/#${song.id}`}
+                onClick={() =>
+                  queueForPlay(
+                    [...songs.slice(index), ...songs.slice(0, index)].map(
+                      (piece) => piece.id,
+                    ),
+                  )
+                }
+                className="min-w-0 flex-1"
+              >
                 <span className="block truncate font-semibold">
                   {song.title}
                   {mediaFor(archive.media, song.id) !== undefined && (

@@ -57,6 +57,13 @@ const STAGES = {
  */
 const OWN_VERDICT_SHARE = 0.75;
 
+/**
+ * How much the others' approval counts among the pieces not seen yet,
+ * against the feed's own order: mostly what the others rated well comes
+ * first.
+ */
+const OTHERS_SHARE = 0.6;
+
 /** What a like adds to the visitor's own verdict, against full stars. */
 const LIKE_SHARE = 0.5;
 
@@ -118,10 +125,12 @@ const ADDED: Readonly<Record<string, string>> = addedDates;
  * @param seed - fixes the chance in the order for one visit
  * @returns every piece, in feed order
  * @remarks
- * Every feed goes through the same {@link STAGES}; the feed only decides the
+ * Every feed goes through the same {@link STAGES}; the feed decides the
  * order within each stage - "new" the newest pieces first, "for you" what
- * fits the visitor's taste, "trend" what everybody likes. In the last stage
- * the visitor's own stars and likes weigh most.
+ * fits the visitor's taste, "trend" what everybody likes. Among the pieces
+ * the visitor has not seen yet, what the others rated well weighs most (see
+ * {@link OTHERS_SHARE}); in the last stage the visitor's own stars and likes
+ * do.
  */
 export function rankFeed(
   tab: FeedTab,
@@ -139,8 +148,12 @@ export function rankFeed(
   const verdict = (song: Song) =>
     OWN_VERDICT_SHARE * ownVerdict(song, signals) +
     (1 - OWN_VERDICT_SHARE) * (order.get(song.id) ?? 0);
+  const othersLike = othersApproval(songs, signals);
+  const unseenFirst = (song: Song) =>
+    OTHERS_SHARE * (othersLike.get(song.id) ?? 0) +
+    (1 - OTHERS_SHARE) * (order.get(song.id) ?? 0);
   return [
-    ...stages[STAGES.unseen].sort(byOrder),
+    ...stages[STAGES.unseen].sort((a, b) => unseenFirst(b) - unseenFirst(a)),
     ...stages[STAGES.untouched].sort(byOrder),
     ...stages[STAGES.judged].sort((a, b) => verdict(b) - verdict(a)),
   ];
@@ -200,6 +213,28 @@ export function rankTrend(
   seed: number,
 ): readonly Song[] {
   return rankFeed("trend", songs, signals, seed);
+}
+
+/**
+ * How well the others like each piece, from 0 (not at all or not rated) to
+ * 1 (best liked of all).
+ *
+ * @remarks
+ * The trend score, scaled by the best one: pieces nobody rated get 0, so
+ * among them the feed's own order decides.
+ */
+function othersApproval(
+  songs: readonly Song[],
+  signals: Signals,
+): Map<string, number> {
+  const trend = trendScores(songs, signals);
+  const best = Math.max(0, ...trend.values());
+  return new Map(
+    songs.map((song) => [
+      song.id,
+      best === 0 ? 0 : Math.max(0, trend.get(song.id) ?? 0) / best,
+    ]),
+  );
 }
 
 /** Which stage a piece is in for the visitor. */

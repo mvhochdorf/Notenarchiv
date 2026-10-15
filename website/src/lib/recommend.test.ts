@@ -92,6 +92,29 @@ describe("stages", () => {
   });
 });
 
+describe("unseen pieces", () => {
+  it("come mostly by what the others rated well, whatever the feed", () => {
+    const numbered = [
+      { ...song("newest", "Märsche"), number: "300" },
+      { ...song("liked", "Polka"), number: "100" },
+      { ...song("middle", "Choral"), number: "200" },
+    ];
+    const others = signals({
+      likes: { liked: { anna: true, ben: true } },
+      votes: { liked: { anna: 5 } },
+    });
+    for (const rank of [rankNew, rankForYou, rankTrend]) {
+      expect(rank(numbered, others, 0.3)[0].id).toBe("liked");
+    }
+    // Without anybody's verdict the feed's own order decides.
+    expect(ids(rankNew(numbered, signals({}), 0.3))).toEqual([
+      "newest",
+      "middle",
+      "liked",
+    ]);
+  });
+});
+
 describe("rankNew", () => {
   it("puts the newest pieces first", () => {
     const numbered = [

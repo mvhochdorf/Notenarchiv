@@ -79,6 +79,23 @@ export type NoteKind = "comments" | "reports";
 /** Every kind of note. */
 const NOTE_KINDS: readonly NoteKind[] = ["comments", "reports"];
 
+/** The maintenance switch and its message. */
+export type Maintenance = {
+  readonly on: boolean;
+  readonly message: string;
+};
+
+/**
+ * Whether this build is the maintenance page only.
+ *
+ * @remarks
+ * Set by the "Wartungsmodus" option of the GitHub workflow. Such a build
+ * shows the maintenance page and never connects to the database. The other
+ * way in is the switch `notenarchiv/maintenance/on` in the database itself,
+ * which closes every open page within seconds - see docs/wartungsmodus.md.
+ */
+const BUILD_MAINTENANCE = process.env.NEXT_PUBLIC_MAINTENANCE === "true";
+
 /** Base of the random part of local comment ids (digits and letters). */
 const ID_RADIX = 36;
 
@@ -111,6 +128,8 @@ export type ArchiveState = {
   readonly me: string;
   /** Everybody's name, by person id, as their devices registered it. */
   readonly people: Readonly<Record<string, string>>;
+  /** Whether the archive is closed for maintenance, and what it says. */
+  readonly maintenance: Maintenance;
 };
 
 /** The state before anything is loaded, also used for the prerender. */
@@ -128,6 +147,7 @@ const INITIAL: ArchiveState = {
   reports: {},
   me: "",
   people: {},
+  maintenance: { on: BUILD_MAINTENANCE, message: "" },
 };
 
 let state: ArchiveState = INITIAL;
@@ -351,6 +371,15 @@ async function written(write: PromiseLike<unknown>): Promise<void> {
   }
 }
 
+/** The maintenance switch as read from the database. */
+function maintenanceOf(value: unknown): Maintenance {
+  const entry = (value ?? {}) as Record<string, unknown>;
+  return {
+    on: entry.on === true,
+    message: typeof entry.message === "string" ? entry.message : "",
+  };
+}
+
 /** Notes in the database which person this device belongs to. */
 async function registerDevice(): Promise<void> {
   const { firstName, lastName } = currentSettings();
@@ -420,15 +449,24 @@ async function start(): Promise<void> {
   const { firstName, lastName } = currentSettings();
   person = personId(firstName, lastName);
   update({ me: person, people: ownName() });
-  if (isFirebaseConfigured()) {
+  if (BUILD_MAINTENANCE) {
+    // The maintenance build stays away from the database altogether.
+    update({ ready: true });
+  } else if (isFirebaseConfigured()) {
     try {
       const { database, signIn } = await import("./firebase-app");
       const { onValue, ref } = await import("firebase/database");
+      const db = database();
+      // Readable by everybody, signed in or not: a closed archive says so
+      // even when signing in fails.
+      onValue(ref(db, `${ROOT}/maintenance`), (snapshot) => {
+        update({ maintenance: maintenanceOf(snapshot.val()) });
+      });
       uid = await signIn();
       if (person !== "") {
-        await registerDevice();
+        // Refused while the archive is closed - nothing to worry about then.
+        await written(registerDevice());
       }
-      const db = database();
       // The store is ready once every node has answered once.
       const waiting = new Set([
         "ratings",

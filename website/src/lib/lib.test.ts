@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  ALL_SONGS,
   filterSongs,
   NO_FILTER,
   popularity,
@@ -37,7 +38,9 @@ describe("songId", () => {
   });
 
   it("gives every imported piece its own id", () => {
-    expect(new Set(SONGS.map((song) => song.id)).size).toBe(SONGS.length);
+    expect(new Set(ALL_SONGS.map((song) => song.id)).size).toBe(
+      ALL_SONGS.length,
+    );
   });
 });
 
@@ -79,7 +82,7 @@ describe("parseYouTube", () => {
   });
 
   it("loads the fixed links, all for known pieces", () => {
-    const ids = new Set(SONGS.map((song) => song.id));
+    const ids = new Set(ALL_SONGS.map((song) => song.id));
     expect(Object.keys(FIXED_MEDIA).every((id) => ids.has(id))).toBe(true);
   });
 
@@ -113,11 +116,22 @@ describe("snippetStart", () => {
   });
 });
 
+describe("hidden categories", () => {
+  it("leaves chorales out of the app but keeps them in the data", () => {
+    expect(ALL_SONGS.some((song) => song.genre === "Choral")).toBe(true);
+    expect(SONGS.some((song) => song.genre === "Choral")).toBe(false);
+    expect(SONGS.length).toBeLessThan(ALL_SONGS.length);
+  });
+});
+
 describe("filter and sort", () => {
   const context = { summaries: new Map(), mine: {}, seed: 0.5 };
 
   it("finds pieces by title words in any order", () => {
-    const found = filterSongs(SONGS, { ...NO_FILTER, query: "gott grosser" });
+    const found = filterSongs(ALL_SONGS, {
+      ...NO_FILTER,
+      query: "gott grosser",
+    });
     expect(found.some((song) => song.title.startsWith("Großer Gott"))).toBe(
       true,
     );

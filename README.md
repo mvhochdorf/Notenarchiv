@@ -176,6 +176,12 @@ Personen und Kommentaren, jeweils als CSV für Excel herunterladbar. Die
 Rohdaten lassen sich zusätzlich in der Firebase-Konsole unter Realtime
 Database -> ⋮ -> **JSON exportieren** sichern.
 
+## Wartungsmodus
+
+Die App lässt sich für alle schließen (Wartungsseite statt App, Schreiben
+gesperrt) - per Schalter in Firebase oder per GitHub Action, siehe
+[docs/wartungsmodus.md](docs/wartungsmodus.md).
+
 ## Veröffentlichen
 
 `.github/workflows/github-ci.yml` baut bei jedem Push auf `main` und
