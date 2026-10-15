@@ -9,7 +9,6 @@ import Link from "next/link";
 import { useState, type ReactElement } from "react";
 import { MAX_NAME_PART, personId } from "@/lib/person";
 import { identify, useArchive } from "@/lib/archive-store";
-import { SONGS } from "@/lib/library";
 import {
   changeSettings,
   isShown,
@@ -50,9 +49,7 @@ export function SettingsView(): ReactElement {
   return (
     <div className="mx-auto w-full max-w-xl space-y-6 px-4 py-6">
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="mr-auto text-2xl font-black tracking-tight">
-          Einstellungen
-        </h1>
+        <h1 className="mr-auto text-2xl font-black tracking-tight">Profil</h1>
         <ModeNotice mode={archive.mode} />
       </div>
 
@@ -61,8 +58,8 @@ export function SettingsView(): ReactElement {
           Angezeigte Stücke (Play und Archiv)
         </legend>
         {SHOW_ORDER.map((show) => {
-          const count = SONGS.filter((song) =>
-            isShown(show, archive.media, song),
+          const count = archive.songs.filter((song) =>
+            isShown(show, archive, song),
           ).length;
           return (
             <Choice
@@ -129,6 +126,16 @@ export function SettingsView(): ReactElement {
         <span className="block text-sm font-normal text-white/60">
           Bewertungen, Likes und Kommentare aller Musiker - mit Download für
           Excel.
+        </span>
+      </Link>
+
+      <Link
+        href="/verwaltung/"
+        className="block rounded-2xl bg-white/5 p-4 font-semibold hover:bg-white/10"
+      >
+        🔧 Verwaltung
+        <span className="block text-sm font-normal text-white/60">
+          Stücke und Videos pflegen, Meldungen bearbeiten - mit Passwort.
         </span>
       </Link>
 

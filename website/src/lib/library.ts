@@ -3,7 +3,7 @@
  *
  * @module
  */
-import songData from "@/data/songs.json";
+import { CLUB } from "./club";
 import { NO_RATING, type RatingSummary } from "./ratings";
 import type { Marks } from "./social";
 import type { Song } from "./song";
@@ -12,19 +12,23 @@ import type { Song } from "./song";
  * Categories hidden from everybody.
  *
  * @remarks
- * The pieces stay in the spreadsheet, keep their videos in youtube.json and
- * their ratings in the database - they are only left out of the app. Remove
- * a category here to show it again.
+ * Set in `verein/config.json` (`hiddenGenres`). The pieces stay in the
+ * catalog with their videos and ratings - they are only left out of Play,
+ * archive and evaluation. The admin still sees them.
  */
-export const HIDDEN_GENRES: ReadonlySet<string> = new Set(["Choral"]);
+export const HIDDEN_GENRES: ReadonlySet<string> = new Set(CLUB.hiddenGenres);
 
-/** Every piece in the spreadsheet, hidden ones included, in its order. */
-export const ALL_SONGS: readonly Song[] = songData;
-
-/** The pieces the app shows, in spreadsheet order. */
-export const SONGS: readonly Song[] = ALL_SONGS.filter(
-  (song) => song.genre === null || !HIDDEN_GENRES.has(song.genre),
-);
+/**
+ * The pieces the app shows.
+ *
+ * @param songs - every piece of the catalog
+ * @returns those not in a hidden category, order unchanged
+ */
+export function visibleSongs(songs: readonly Song[]): readonly Song[] {
+  return songs.filter(
+    (song) => song.genre === null || !HIDDEN_GENRES.has(song.genre),
+  );
+}
 
 /** How the pieces can be ordered. */
 export type SortOrder = "random" | "popular" | "unrated" | "title" | "number";
@@ -169,9 +173,7 @@ export function sortSongs(
       sorted = [...songs].sort(byTitle);
       break;
     case "number":
-      sorted = [...songs].sort(
-        (a, b) => compareNumbers(a.number, b.number) || byTitle(a, b),
-      );
+      sorted = [...songs].sort(byArchiveNumber);
       break;
     default:
       sorted = shuffle(songs, context.seed);
@@ -196,16 +198,6 @@ export function sortSongs(
  */
 export function popularity(summary: RatingSummary, likes: number): number {
   return likes + summary.count * (summary.average - NEUTRAL_STARS);
-}
-
-/**
- * Looks a piece up by its id.
- *
- * @param id - the song id
- * @returns the piece, or undefined if there is none
- */
-export function songById(id: string): Song | undefined {
-  return SONGS.find((song) => song.id === id);
 }
 
 /**
@@ -266,6 +258,19 @@ function searchText(song: Song): string {
     SEARCH_TEXT.set(song, text);
   }
   return text;
+}
+
+/**
+ * Orders pieces by archive number, then title.
+ *
+ * @param a - one piece
+ * @param b - the other
+ * @returns negative when `a` comes first
+ */
+export function byArchiveNumber(a: Song, b: Song): number {
+  return (
+    compareNumbers(a.number, b.number) || a.title.localeCompare(b.title, "de")
+  );
 }
 
 /** Orders archive numbers like `99 < 277a < 1001`, missing ones last. */

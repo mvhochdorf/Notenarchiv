@@ -3,12 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/sync-verein.mjs",
     "dev": "next dev -p 3010",
+    "prebuild": "node scripts/sync-verein.mjs",
     "build": "next build",
     "start": "next start -p 3010",
     "import": "npx --yes tsx --tsconfig tsconfig.json scripts/import-notes.mts",
     "youtube": "npx --yes tsx --tsconfig tsconfig.json scripts/find-youtube.mts",
     "youtube:details": "npx --yes tsx --tsconfig tsconfig.json scripts/youtube-details.mts",
+    "catalog:details": "npx --yes tsx --tsconfig tsconfig.json scripts/catalog-details.mts",
+    "catalog:export": "npx --yes tsx --tsconfig tsconfig.json scripts/export-catalog.mts",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "format": "prettier --write .",
@@ -16,7 +20,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "next typegen && tsc --noEmit",
-    "deps:check": "npm outdated"
+    "deps:check": "npm outdated",
+    "verein": "node scripts/sync-verein.mjs"
   },
   "dependencies": {
     "firebase": "^12.18.0",
@@ -33,6 +38,7 @@
     "eslint-config-next": "16.3.4",
     "exceljs": "^4.4.0",
     "prettier": "^3.9.6",
+    "sharp": "0.35.5",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.11"

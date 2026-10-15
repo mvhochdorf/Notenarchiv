@@ -1,0 +1,57 @@
+#------------------------------------------------------------------------------
+# Länge und Höhepunkt neuer Videos ermitteln
+#
+# Liest für jedes Video im Katalog ohne Länge die YouTube-Seite und trägt
+# Länge und Höhepunkt ("Am häufigsten wiederholt") in Firebase ein. Braucht
+# das Secret ADMIN_PASSWORD (Passwort des Verwaltungskontos), siehe
+# docs/verwaltung.md. Ohne Secret wird nichts gemacht.
+#------------------------------------------------------------------------------
+name: Video-Details
+
+permissions:
+  contents: read
+
+concurrency:
+  group: video-details
+  cancel-in-progress: false
+
+on:
+  schedule:
+    # Jede Nacht um 3:17 Uhr UTC.
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  details:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+    defaults:
+      run:
+        working-directory: ./website
+    steps:
+      - name: Kein Secret
+        if: env.ADMIN_PASSWORD == ''
+        working-directory: .
+        run: echo "::notice::Secret ADMIN_PASSWORD fehlt - nichts zu tun (siehe docs/verwaltung.md)."
+
+      - name: Checkout code
+        if: env.ADMIN_PASSWORD != ''
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        if: env.ADMIN_PASSWORD != ''
+        uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install dependencies
+        if: env.ADMIN_PASSWORD != ''
+        run: npm ci
+
+      - name: Videos auswerten
+        if: env.ADMIN_PASSWORD != ''
+        run: npm run catalog:details

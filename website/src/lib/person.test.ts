@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { commentRows, personRows, songRows, toCsv } from "./evaluation";
-import { SONGS } from "./library";
+import { TEST_SONGS } from "./test-songs";
 import { personId } from "./person";
 import { summarize } from "./ratings";
 
@@ -21,7 +21,7 @@ describe("personId", () => {
 });
 
 describe("evaluation", () => {
-  const song = SONGS[0];
+  const song = TEST_SONGS[0];
   const votes = { [song.id]: { anna: 5, ben: 3 } };
   const data = {
     votes,
@@ -55,7 +55,7 @@ describe("evaluation", () => {
   });
 
   it("lists comments with their piece", () => {
-    expect(commentRows(SONGS, data)[0]).toMatchObject({
+    expect(commentRows(TEST_SONGS, data)[0]).toMatchObject({
       song,
       name: "Ben B",
       text: "Gut",

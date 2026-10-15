@@ -125,15 +125,16 @@ erlaubt die Anmeldung nur von Webseiten, die hier eingetragen sind.
 Entweder den Block aus Schritt 5 an Claude geben ("hier ist die
 firebaseConfig") - oder selbst eintragen:
 
-1. Datei `website/src/lib/firebase-config.ts` öffnen.
-2. Bei jedem Wert das leere `""` am Zeilenende durch den passenden Wert aus
-   Schritt 5 ersetzen, zum Beispiel:
+1. Datei `website/verein/config.json` öffnen.
+2. Unter `firebase` jeden Wert durch den passenden Wert aus Schritt 5
+   ersetzen, zum Beispiel:
 
-   ```ts
-   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "AIza...",
-   authDomain:
-     process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ??
-     "notenarchiv-mvhochdorf.firebaseapp.com",
+   ```json
+   "firebase": {
+     "apiKey": "AIza...",
+     "authDomain": "notenarchiv-mvhochdorf.firebaseapp.com",
+     ...
+   }
    ```
 
    Das gilt für alle sieben Werte: `apiKey`, `authDomain`, `databaseURL`,
@@ -159,7 +160,7 @@ nicht veröffentlicht) oder Schritt 7 (ein Wert falsch kopiert).
 
 ## Schritt 9 - Veröffentlichen
 
-1. Die geänderte `firebase-config.ts` committen und auf `main` pushen.
+1. Die geänderte `config.json` committen und auf `main` pushen.
 2. Einmalig auf GitHub im Repository: **Settings** -> **Pages** ->
    **Source: GitHub Actions** wählen.
 3. Nach jedem Push baut GitHub die Seite neu (Reiter **Actions**, dauert ein
@@ -174,7 +175,7 @@ schreiben.
 
 ## Später: Auswerten und sichern
 
-- **In der App**: Einstellungen -> **Auswertung**. Tabellen zu Stücken,
+- **In der App**: Profil -> **Auswertung**. Tabellen zu Stücken,
   Personen und Kommentaren, jeweils mit Download als Excel-Datei (CSV).
 - **Rohdaten sichern**: Firebase-Konsole -> Realtime Database -> Reiter
   **Daten** -> Menü **⋮** oben rechts -> **JSON exportieren**. Am besten ab

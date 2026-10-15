@@ -7,6 +7,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import type { ReactElement, ReactNode } from "react";
 import "./globals.css";
+import { CLUB } from "@/lib/club";
 import { BottomNav } from "@/components/bottom-nav";
 import { MaintenanceGate } from "@/components/maintenance-gate";
 import { NameGate } from "@/components/name-gate";
@@ -18,11 +19,10 @@ const geistSans = Geist({
 
 export const metadata: Metadata = {
   title: {
-    default: "Notenarchiv",
-    template: "%s - Notenarchiv",
+    default: CLUB.appName,
+    template: `%s - ${CLUB.appName}`,
   },
-  description:
-    "Das Notenarchiv zum Durchswipen, Anhören und Bewerten - für alle Musikerinnen und Musiker.",
+  description: CLUB.description,
 };
 
 export const viewport: Viewport = {

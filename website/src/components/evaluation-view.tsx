@@ -7,25 +7,16 @@
 
 import { useState, type ReactElement } from "react";
 import { useArchive } from "@/lib/archive-store";
-import {
-  commentRows,
-  personRows,
-  songRows,
-  toCsv,
-  type SongRow,
-} from "@/lib/evaluation";
-import { SONGS } from "@/lib/library";
+import { personRows, songRows, toCsv, type SongRow } from "@/lib/evaluation";
 import { ModeNotice } from "./mode-notice";
 
-/** The three tables. */
-type Table = "songs" | "people" | "comments" | "reports";
+/** The two tables. */
+type Table = "songs" | "people";
 
 /** Labels of the tables. */
 const TABLES: Readonly<Record<Table, string>> = {
   songs: "Stücke",
   people: "Personen",
-  comments: "Kommentare",
-  reports: "Meldungen",
 };
 
 /** The columns the piece table can be sorted by, and their titles. */
@@ -49,7 +40,7 @@ const AVERAGE_DIGITS = 1;
  * @returns the page content
  * @remarks
  * Reads the same live data as the feed, so it is up to date while it is
- * open. Each table can be saved as a CSV file for Excel.
+ * open. The table of pieces can be saved as a CSV file for Excel.
  */
 export function EvaluationView(): ReactElement {
   const archive = useArchive();
@@ -57,7 +48,7 @@ export function EvaluationView(): ReactElement {
   const [sortBy, setSortBy] = useState<SongColumn>("average");
   const [onlyActive, setOnlyActive] = useState(true);
 
-  const songs = songRows(SONGS, archive)
+  const songs = songRows(archive.songs, archive)
     .filter((row) => !onlyActive || activity(row) > 0)
     .sort(
       (a, b) =>
@@ -66,13 +57,9 @@ export function EvaluationView(): ReactElement {
         a.song.title.localeCompare(b.song.title, "de"),
     );
   const people = personRows(archive);
-  const comments = commentRows(SONGS, archive);
-  // Reports are stored like comments, so the same rows serve both.
-  const reports = commentRows(SONGS, { ...archive, comments: archive.reports });
-  const notes = table === "reports" ? reports : comments;
 
   const download = () => {
-    const [name, csv] = exportOf(table, songs, people, notes);
+    const [name, csv] = songsExport(songs);
     const link = document.createElement("a");
     link.href = URL.createObjectURL(
       new Blob([csv], { type: "text/csv;charset=utf-8" }),
@@ -107,13 +94,15 @@ export function EvaluationView(): ReactElement {
             {TABLES[key]}
           </button>
         ))}
-        <button
-          type="button"
-          onClick={download}
-          className="ml-auto rounded-full bg-white/10 px-4 py-1.5 text-sm font-semibold hover:bg-white/20"
-        >
-          ⬇ Als Excel-Datei (CSV)
-        </button>
+        {table === "songs" && (
+          <button
+            type="button"
+            onClick={download}
+            className="ml-auto rounded-full bg-white/10 px-4 py-1.5 text-sm font-semibold hover:bg-white/20"
+          >
+            ⬇ Als Excel-Datei (CSV)
+          </button>
+        )}
       </div>
 
       {table === "songs" && (
@@ -213,39 +202,6 @@ export function EvaluationView(): ReactElement {
           </table>
         </div>
       )}
-
-      {(table === "comments" || table === "reports") && (
-        <ul className="space-y-2">
-          {table === "reports" && (
-            <li className="text-sm text-white/60">
-              Meldungen zu Fehlern bei Stücken (falsches Video, falscher Titel
-              ...). Zum Beheben die CSV-Datei herunterladen und weitergeben;
-              erledigte Meldungen in der Firebase-Konsole unter
-              notenarchiv/reports löschen.
-            </li>
-          )}
-          {notes.length === 0 && (
-            <li className="rounded-2xl bg-white/5 p-6 text-center text-white/50">
-              {table === "reports"
-                ? "Keine Meldungen."
-                : "Noch keine Kommentare."}
-            </li>
-          )}
-          {notes.map((row) => (
-            <li
-              key={`${row.song.id}-${row.at}`}
-              className="rounded-2xl bg-white/5 p-3"
-            >
-              <p className="text-xs text-white/50">
-                <span className="font-semibold text-white/80">{row.name}</span>{" "}
-                zu <span className="text-amber-300">{row.song.title}</span> ·{" "}
-                {dateTime(row.at)}
-              </p>
-              <p className="text-sm whitespace-pre-wrap">{row.text}</p>
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }
@@ -255,93 +211,36 @@ function activity(row: SongRow): number {
   return row.votes + row.likes + row.saves + row.comments + row.views;
 }
 
-/** The file name and content of a table's export. */
-function exportOf(
-  table: Table,
-  songs: readonly SongRow[],
-  people: ReturnType<typeof personRows>,
-  notes: ReturnType<typeof commentRows>,
-): [string, string] {
-  let result: [string, string];
-  switch (table) {
-    case "people":
-      result = [
-        "notenarchiv-personen.csv",
-        toCsv(
-          ["Name", "Bewertet", "Likes", "Gemerkt", "Kommentare", "Gesehen"],
-          people.map((row) => [
-            row.name,
-            row.votes,
-            row.likes,
-            row.saves,
-            row.comments,
-            row.views,
-          ]),
-        ),
-      ];
-      break;
-    case "reports":
-      result = [
-        "notenarchiv-meldungen.csv",
-        toCsv(
-          ["Datum", "Name", "Nr.", "Stück", "ID", "Meldung"],
-          notes.map((row) => [
-            dateTime(row.at),
-            row.name,
-            row.song.number ?? "",
-            row.song.title,
-            row.song.id,
-            row.text,
-          ]),
-        ),
-      ];
-      break;
-    case "comments":
-      result = [
-        "notenarchiv-kommentare.csv",
-        toCsv(
-          ["Datum", "Name", "Nr.", "Stück", "Kommentar"],
-          notes.map((row) => [
-            dateTime(row.at),
-            row.name,
-            row.song.number ?? "",
-            row.song.title,
-            row.text,
-          ]),
-        ),
-      ];
-      break;
-    default:
-      result = [
-        "notenarchiv-stuecke.csv",
-        toCsv(
-          [
-            "Nr.",
-            "Titel",
-            "Sparte",
-            "Anlass",
-            "Komponist",
-            "Bearbeitung",
-            ...Object.values(SONG_COLUMNS),
-          ],
-          songs.map((row) => [
-            row.song.number ?? "",
-            row.song.title,
-            row.song.genre ?? "",
-            row.song.occasion ?? "",
-            row.song.composer ?? "",
-            row.song.arranger ?? "",
-            row.votes === 0 ? "" : decimal(row.average),
-            row.votes,
-            row.likes,
-            row.saves,
-            row.comments,
-            row.views,
-          ]),
-        ),
-      ];
-  }
-  return result;
+/** The file name and content of the pieces' export. */
+function songsExport(songs: readonly SongRow[]): [string, string] {
+  return [
+    "notenarchiv-stuecke.csv",
+    toCsv(
+      [
+        "Nr.",
+        "Titel",
+        "Sparte",
+        "Anlass",
+        "Komponist",
+        "Bearbeitung",
+        ...Object.values(SONG_COLUMNS),
+      ],
+      songs.map((row) => [
+        row.song.number ?? "",
+        row.song.title,
+        row.song.genre ?? "",
+        row.song.occasion ?? "",
+        row.song.composer ?? "",
+        row.song.arranger ?? "",
+        row.votes === 0 ? "" : decimal(row.average),
+        row.votes,
+        row.likes,
+        row.saves,
+        row.comments,
+        row.views,
+      ]),
+    ),
+  ];
 }
 
 /** A number with one decimal, German style. */
@@ -349,13 +248,5 @@ function decimal(value: number): string {
   return value.toLocaleString("de-DE", {
     minimumFractionDigits: AVERAGE_DIGITS,
     maximumFractionDigits: AVERAGE_DIGITS,
-  });
-}
-
-/** A moment as German date and time. */
-function dateTime(at: number): string {
-  return new Date(at).toLocaleString("de-DE", {
-    dateStyle: "short",
-    timeStyle: "short",
   });
 }

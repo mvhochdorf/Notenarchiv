@@ -1,0 +1,50 @@
+{
+  "appName": "Notenarchiv",
+  "clubName": "Musikverein Hochdorf",
+  "description": "Das Notenarchiv zum Durchswipen, Anhören und Bewerten - für alle Musikerinnen und Musiker.",
+  "firebase": {
+    "apiKey": "AIzaSyAzANaaK0y1quupqzctVjVFmwxTDJLR92s",
+    "authDomain": "notenarchiv-mvhochdorf.firebaseapp.com",
+    "databaseURL": "https://notenarchiv-mvhochdorf-default-rtdb.europe-west1.firebasedatabase.app",
+    "projectId": "notenarchiv-mvhochdorf",
+    "storageBucket": "notenarchiv-mvhochdorf.firebasestorage.app",
+    "messagingSenderId": "348063435263",
+    "appId": "1:348063435263:web:ed190623d52a27c7a13fca"
+  },
+  "admin": {
+    "email": "verwaltung@notenarchiv-mvhochdorf.firebaseapp.com"
+  },
+  "hiddenGenres": ["Choral"],
+  "defaults": {
+    "show": "withMusic",
+    "snippetStart": "peak",
+    "atEnd": "repeat"
+  },
+  "spreadsheet": {
+    "file": "Notenliste.xlsx",
+    "columns": {
+      "number": "Neue Nr.",
+      "title": "Titel",
+      "genre": "Sparte",
+      "occasion": "Anlass",
+      "solo": "Solo",
+      "composer": "Komponist",
+      "arranger": "Bearbeitung",
+      "publisher": "Verlag",
+      "folderNumber": "Nr. im Ordner",
+      "collection": "Sammlung/Heft"
+    }
+  },
+  "search": {
+    "bandQuery": "Blasorchester",
+    "bandQueryByGenre": { "Choral": "Posaunenchor" },
+    "internalArrangers": ["Eberspächer"],
+    "spellings": {
+      "Radetzki Marsch": "Radetzky Marsch",
+      "Trumpet Volontary": "Trumpet Voluntary",
+      "A Medival Christmas": "A Medieval Christmas",
+      "Ad honorem Die - Prozessionsmarsch": "Ad honorem Dei",
+      "Mährischer Tanz No. 4": "Mährischer Tanz Nr. 4"
+    }
+  }
+}

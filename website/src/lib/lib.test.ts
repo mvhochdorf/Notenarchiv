@@ -5,14 +5,13 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  ALL_SONGS,
   filterSongs,
   NO_FILTER,
   popularity,
   sortSongs,
-  SONGS,
+  visibleSongs,
 } from "./library";
-import { FIXED_MEDIA, parseYouTube, snippetStart } from "./media";
+import { parseYouTube, snippetStart } from "./media";
 import { summarize } from "./ratings";
 import {
   commentsOf,
@@ -22,6 +21,13 @@ import {
   validComments,
 } from "./social";
 import { songId, uniqueIds } from "./song";
+import { TEST_SONGS } from "./test-songs";
+
+/** Every test piece, hidden ones included. */
+const ALL_SONGS = TEST_SONGS;
+
+/** The pieces the app shows. */
+const SONGS = visibleSongs(ALL_SONGS);
 
 describe("songId", () => {
   it("combines number and title into a safe slug", () => {
@@ -35,12 +41,6 @@ describe("songId", () => {
 
   it("numbers repeated ids", () => {
     expect(uniqueIds(["a", "b", "a", "a"])).toEqual(["a", "b", "a-2", "a-3"]);
-  });
-
-  it("gives every imported piece its own id", () => {
-    expect(new Set(ALL_SONGS.map((song) => song.id)).size).toBe(
-      ALL_SONGS.length,
-    );
   });
 });
 
@@ -79,11 +79,6 @@ describe("parseYouTube", () => {
     ["dQw4w9WgXcQ", 0],
   ])("reads %s", (input, start) => {
     expect(parseYouTube(input)).toEqual({ videoId: "dQw4w9WgXcQ", start });
-  });
-
-  it("loads the fixed links, all for known pieces", () => {
-    const ids = new Set(ALL_SONGS.map((song) => song.id));
-    expect(Object.keys(FIXED_MEDIA).every((id) => ids.has(id))).toBe(true);
   });
 
   it("rejects other links", () => {

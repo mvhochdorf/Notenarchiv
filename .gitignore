@@ -30,3 +30,15 @@ website/.lighthouseci
 
 # other
 game_instructions
+
+# copies of the club's files, made by scripts/sync-verein.mjs from website/verein
+website/public/logo.png
+website/src/app/icon.png
+website/src/app/apple-icon.png
+
+# Startbestand eines neuen Vereins - wird einmal nach Firebase importiert,
+# danach liegen die Stücke nur noch dort (siehe docs/neuer-verein.md)
+website/verein/songs.json
+website/verein/youtube.json
+website/verein/added.json
+website/verein/catalog-import.json

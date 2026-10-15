@@ -1,43 +1,36 @@
 /**
- * Turns Notenliste.xlsx into the song list the website ships with.
+ * Turns the club's spreadsheet into the song list the website ships with.
  *
  * @module
  * @remarks
- * The spreadsheet stays the single source of truth and is only read, never
- * written. Run `npm run import` after editing it; the result goes to
- * `src/data/songs.json` and is committed, so the site builds without Excel.
+ * Which file and which column headers come from `verein/config.json`
+ * (`spreadsheet`). The spreadsheet stays the single source of truth and is
+ * only read, never written. Run `npm run import` after editing it; the
+ * result goes to `verein/songs.json` and is committed, so the site builds
+ * without Excel.
  */
 import ExcelJS from "exceljs";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { CLUB } from "../src/lib/club";
 import { songId, uniqueIds, type Song } from "../src/lib/song";
 
-/** Where the archive list lives (repository root). */
-const SOURCE = fileURLToPath(new URL("../../Notenliste.xlsx", import.meta.url));
-
-/** Where the website reads it from. */
-const TARGET = fileURLToPath(
-  new URL("../src/data/songs.json", import.meta.url),
+/** The spreadsheet, its path taken from the repository root. */
+const SOURCE = fileURLToPath(
+  new URL(`../../${CLUB.spreadsheet.file}`, import.meta.url),
 );
 
+/** Where the website reads it from. */
+const TARGET = fileURLToPath(new URL("../verein/songs.json", import.meta.url));
+
 /** When each piece first appeared, for the "new" feed. */
-const ADDED = fileURLToPath(new URL("../src/data/added.json", import.meta.url));
+const ADDED = fileURLToPath(new URL("../verein/added.json", import.meta.url));
 
-/** Spreadsheet header for each song field. */
-const COLUMNS = {
-  number: "Neue Nr.",
-  title: "Titel",
-  genre: "Sparte",
-  occasion: "Anlass",
-  solo: "Solo",
-  composer: "Komponist",
-  arranger: "Bearbeitung",
-  publisher: "Verlag",
-  folderNumber: "Nr. im Ordner",
-  collection: "Sammlung/Heft",
-} as const;
+/** The song fields read from the spreadsheet. */
+type Field = Exclude<keyof Song, "id">;
 
-type Field = keyof typeof COLUMNS;
+/** Spreadsheet header for each song field, as the club named them. */
+const COLUMNS = CLUB.spreadsheet.columns as Readonly<Record<Field, string>>;
 
 /** Spaces in JSON output. */
 const JSON_INDENT = 2;

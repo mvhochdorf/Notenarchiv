@@ -5,7 +5,7 @@
  * @remarks
  * Run with `npm run youtube`. Reads the YouTube search page (no API key
  * needed), scores the results and keeps the best one per piece in
- * `src/data/youtube.json`. Pieces already in the file are skipped, so the
+ * `verein/youtube.json`. Pieces already in the file are skipped, so the
  * script can be stopped and resumed, and links corrected by hand stay as
  * they are. `--retry` searches again for the pieces that got no link,
  * `--upgrade` for the linked ones that are no band recording (and replaces
@@ -20,20 +20,21 @@
  * publishers like Rundel or De Haske upload demo recordings of their
  * editions, which are exactly the arrangements in the archive.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { FixedMedia } from "../src/lib/media";
+import { CLUB } from "../src/lib/club";
 import type { Song } from "../src/lib/song";
 import { loadPage, PAUSE_MS, pageData, sleep } from "./youtube-page.mjs";
 
 /** Song list written by the import. */
 const SONGS_FILE = fileURLToPath(
-  new URL("../src/data/songs.json", import.meta.url),
+  new URL("../verein/songs.json", import.meta.url),
 );
 
 /** Where the links go. */
 const TARGET = fileURLToPath(
-  new URL("../src/data/youtube.json", import.meta.url),
+  new URL("../verein/youtube.json", import.meta.url),
 );
 
 /**
@@ -72,26 +73,21 @@ const RANKS_WEIGHTED = 10;
  *
  * @remarks
  * Their arrangements are not on YouTube, so searching for the name only
- * finds nothing - the search goes by title and band music instead. Add a
- * name here when another member arranges for the club.
+ * finds nothing - the search goes by title and band music instead. Set in
+ * `verein/config.json` (`search.internalArrangers`).
  */
-const INTERNAL_NAMES = ["eberspacher"];
+const INTERNAL_NAMES = CLUB.search.internalArrangers.map(normalize);
 
 /**
  * How a title from the spreadsheet is spelled on YouTube.
  *
  * @remarks
  * The spreadsheet stays as it is; these only fix the search for titles
- * spelled differently there. Add a line when a piece is not found because
- * of its spelling.
+ * spelled differently there. Set in `verein/config.json`
+ * (`search.spellings`).
  */
-const SEARCH_SPELLINGS: Readonly<Record<string, string>> = {
-  "Radetzki Marsch": "Radetzky Marsch",
-  "Trumpet Volontary": "Trumpet Voluntary",
-  "A Medival Christmas": "A Medieval Christmas",
-  "Ad honorem Die - Prozessionsmarsch": "Ad honorem Dei",
-  "Mährischer Tanz No. 4": "Mährischer Tanz Nr. 4",
-};
+const SEARCH_SPELLINGS: Readonly<Record<string, string>> =
+  CLUB.search.spellings;
 
 /** Shortest name part that is matched. */
 const MIN_NAME_LENGTH = 4;
@@ -186,7 +182,9 @@ type Result = {
 type Entry = FixedMedia | { readonly label: string };
 
 const songs = JSON.parse(readFileSync(SONGS_FILE, "utf8")) as Song[];
-const links = JSON.parse(readFileSync(TARGET, "utf8")) as Record<string, Entry>;
+const links = (
+  existsSync(TARGET) ? JSON.parse(readFileSync(TARGET, "utf8")) : {}
+) as Record<string, Entry>;
 const retry = process.argv.includes("--retry");
 const upgrade = process.argv.includes("--upgrade");
 const limit = Number(
@@ -267,7 +265,10 @@ async function findVideo(song: Song): Promise<Result | null> {
   const title = searchTitle(song.title);
   const arranger = publicSurname(song.arranger);
   const composer = publicSurname(song.composer);
-  const kind = song.genre === "Choral" ? "Posaunenchor" : "Blasorchester";
+  const kind =
+    (song.genre === null
+      ? undefined
+      : CLUB.search.bandQueryByGenre[song.genre]) ?? CLUB.search.bandQuery;
   const wanted = retry
     ? [
         `${title} ${composer ?? ""}`,

@@ -11,6 +11,7 @@ export default defineConfig({
     alias: {
       // Mirrors the "@/*" path alias from tsconfig.json.
       "@": fileURLToPath(new URL("./src", import.meta.url)),
+      "@verein": fileURLToPath(new URL("./verein", import.meta.url)),
     },
   },
   test: {

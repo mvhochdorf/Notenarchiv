@@ -16,10 +16,11 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { ClubLogo } from "@/components/club-logo";
+import { CLUB } from "@/lib/club";
 
 export const metadata: Metadata = {
   title: "Seite nicht gefunden",
-  description: "Diese Adresse gibt es nicht - zurück zum Notenarchiv.",
+  description: `Diese Adresse gibt es nicht - zurück zum ${CLUB.appName}.`,
 };
 
 /**

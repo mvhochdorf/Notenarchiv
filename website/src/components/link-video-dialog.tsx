@@ -7,25 +7,27 @@
 
 import { useState, type ReactElement } from "react";
 import { linkMedia } from "@/lib/archive-store";
-import { FIXED_MEDIA, parseYouTube, searchUrl, type Media } from "@/lib/media";
+import { parseYouTube, searchUrl, type Media } from "@/lib/media";
 import type { Song } from "@/lib/song";
 
 /**
  * Renders the dialog over the feed.
  *
  * @param props - the piece, its current video if any, whether that video was
- *   linked in the app (rather than fixed in the site), and how to close
+ *   linked in the app, whether the catalog has one, and how to close
  * @returns the modal dialog
  */
 export function LinkVideoDialog({
   song,
   current,
   ownLink,
+  inCatalog,
   onClose,
 }: {
   readonly song: Song;
   readonly current: Media | undefined;
   readonly ownLink: boolean;
+  readonly inCatalog: boolean;
   readonly onClose: () => void;
 }): ReactElement {
   const [link, setLink] = useState(
@@ -138,9 +140,7 @@ export function LinkVideoDialog({
               onClick={unlink}
               className="ml-auto rounded-xl px-4 py-2 text-red-400 hover:bg-red-950"
             >
-              {FIXED_MEDIA[song.id] === undefined
-                ? "Entfernen"
-                : "Zurück zum Standard"}
+              {inCatalog ? "Zurück zum Standard" : "Entfernen"}
             </button>
           )}
         </div>

@@ -1,6 +1,6 @@
 /**
- * The shared, live state of the archive: everybody's stars, likes, saved
- * pieces and comments, and the linked videos.
+ * The shared, live state of the archive: the catalog of pieces, everybody's
+ * stars, likes, saved pieces and comments, and the linked videos.
  *
  * @module
  * @remarks
@@ -12,6 +12,8 @@
  * their name, the same on every device (see person.ts). Stored in the
  * Realtime Database as
  *
+ * - `notenarchiv/catalog/{songId}` - the pieces and their videos, kept by
+ *   the admin (see catalog.ts)
  * - `notenarchiv/users/{uid}` - which person a device belongs to:
  *   `{ firstName, lastName, personId, at }`
  * - `notenarchiv/ratings/{songId}/{personId}` - the stars one person gave
@@ -20,18 +22,28 @@
  *   `/{songId}/{personId}` - `true` when that person likes, saved or has
  *   seen the piece
  * - `notenarchiv/comments/{songId}/{commentId}` - a {@link Comment}
+ * - `notenarchiv/news/{songId}/{personId}/{like|rating|added}` - when that
+ *   person liked, rated or added the piece, for the inbox (see news.ts)
  * - `notenarchiv/reports/{songId}/{reportId}` - a note for the admin about
  *   something wrong with the piece (wrong video, wrong title, ...), stored
  *   like a comment
  *
  * Without a configured Firebase project the same state lives in this
- * browser's localStorage instead, so the app is usable before the database is
- * set up - only nobody else sees it.
+ * browser's localStorage instead - only nobody else sees it. The pieces
+ * themselves come from the database only, so the archive is empty then.
  */
 import { useSyncExternalStore } from "react";
+import {
+  catalogOf,
+  EMPTY_CATALOG,
+  type Catalog,
+  type CatalogEntry,
+} from "./catalog";
 import { isFirebaseConfigured } from "./firebase-config";
 import { readStored, storageKey, writeStored } from "./local-store";
+import { visibleSongs } from "./library";
 import { isMedia, type Media } from "./media";
+import { validNews, type NewsKind, type NewsTimes } from "./news";
 import { displayName, personId } from "./person";
 import {
   isStars,
@@ -47,6 +59,7 @@ import {
   type Marks,
 } from "./social";
 import { changeSettings, currentSettings } from "./settings";
+import type { Song } from "./song";
 
 /** Where everything of this app lives in the database. */
 const ROOT = "notenarchiv";
@@ -111,6 +124,10 @@ export type ArchiveMode = "starting" | "local" | "online" | "error";
 /** Everything the pages need to know. */
 export type ArchiveState = {
   readonly mode: ArchiveMode;
+  /** Every piece and its video, hidden categories included. */
+  readonly catalog: Catalog;
+  /** The pieces the app shows, by archive number. */
+  readonly songs: readonly Song[];
   readonly votes: AllVotes;
   readonly media: Readonly<Record<string, Media>>;
   readonly summaries: ReadonlyMap<string, RatingSummary>;
@@ -124,6 +141,8 @@ export type ArchiveState = {
   readonly comments: AllComments;
   /** Notes about something wrong with a piece, for the admin. */
   readonly reports: AllComments;
+  /** When people liked, rated or added pieces, for the inbox. */
+  readonly news: NewsTimes;
   /** The visitor's person id, empty until they gave their name. */
   readonly me: string;
   /** Everybody's name, by person id, as their devices registered it. */
@@ -135,6 +154,8 @@ export type ArchiveState = {
 /** The state before anything is loaded, also used for the prerender. */
 const INITIAL: ArchiveState = {
   mode: "starting",
+  catalog: EMPTY_CATALOG,
+  songs: [],
   votes: {},
   media: {},
   summaries: new Map(),
@@ -145,6 +166,7 @@ const INITIAL: ArchiveState = {
   saved: {},
   comments: {},
   reports: {},
+  news: {},
   me: "",
   people: {},
   maintenance: { on: BUILD_MAINTENANCE, message: "" },
@@ -224,6 +246,7 @@ export async function rate(
       const { ref, remove, set } = await import("firebase/database");
       const path = ref(database(), `${ROOT}/ratings/${songId}/${person}`);
       await written(stars === null ? remove(path) : set(path, stars));
+      await noteNews("rating", songId, stars !== null);
     } else {
       writeStored(LOCAL_RATINGS_KEY, LOCAL_VERSION, state.mine);
     }
@@ -290,9 +313,61 @@ export async function mark(
       const { ref, remove, set } = await import("firebase/database");
       const path = ref(database(), `${ROOT}/${kind}/${songId}/${person}`);
       await written(on ? set(path, true) : remove(path));
+      if (kind === "likes") {
+        await noteNews("like", songId, on);
+      }
     } else {
       writeStored(LOCAL_MARK_KEYS[kind], LOCAL_VERSION, state[kind]);
     }
+  }
+}
+
+/**
+ * Adds a new piece to the catalog - open to every musician.
+ *
+ * @param songId - the new piece's id, not yet in use
+ * @param entry - its fields
+ * @throws when the archive is offline, the visitor has no name yet or the
+ *   database refuses (the id is taken, the archive is closed)
+ * @remarks
+ * Changing or deleting pieces is left to the admin; the database's rules
+ * let a musician only create a piece that does not exist yet, marked with
+ * their person id.
+ */
+export async function addSong(
+  songId: string,
+  entry: CatalogEntry,
+): Promise<void> {
+  if (state.mode !== "online" || person === "") {
+    throw new Error("Nur online und mit Namen möglich.");
+  }
+  const { database } = await import("./firebase-app");
+  const { ref, set } = await import("firebase/database");
+  await set(ref(database(), `${ROOT}/catalog/${songId}`), {
+    ...entry,
+    addedBy: person,
+  });
+  await noteNews("added", songId, true);
+}
+
+/**
+ * Notes for the inbox when the visitor did something to a piece.
+ *
+ * @param kind - liked, rated or added
+ * @param songId - which piece
+ * @param on - whether it is done or taken back
+ */
+export async function noteNews(
+  kind: NewsKind,
+  songId: string,
+  on: boolean,
+): Promise<void> {
+  if (state.mode === "online" && person !== "") {
+    const { database } = await import("./firebase-app");
+    const { ref, remove, serverTimestamp, set } =
+      await import("firebase/database");
+    const path = ref(database(), `${ROOT}/news/${songId}/${person}/${kind}`);
+    await written(on ? set(path, serverTimestamp()) : remove(path));
   }
 }
 
@@ -469,9 +544,11 @@ async function start(): Promise<void> {
       }
       // The store is ready once every node has answered once.
       const waiting = new Set([
+        "catalog",
         "ratings",
         "media",
         "users",
+        "news",
         ...NOTE_KINDS,
         ...MARK_KINDS,
       ]);
@@ -497,11 +574,13 @@ async function start(): Promise<void> {
           },
         );
       };
+      listen("catalog", (value) => setCatalog(catalogOf(value)));
       listen("ratings", (value) => setVotes((value ?? {}) as AllVotes));
       listen("media", (value) => update({ media: validMedia(value) }));
       for (const kind of NOTE_KINDS) {
         listen(kind, (value) => update({ [kind]: validComments(value) }));
       }
+      listen("news", (value) => update({ news: validNews(value) }));
       listen("users", (value) =>
         update({ people: { ...peopleOf(value), ...ownName() } }),
       );
@@ -549,6 +628,12 @@ function startLocal(mode: ArchiveMode): void {
     ),
   });
   setVotes(votes);
+}
+
+/** Replaces the catalog; an empty database means no pieces yet. */
+function setCatalog(stored: Catalog | null): void {
+  const catalog = stored ?? EMPTY_CATALOG;
+  update({ catalog, songs: visibleSongs(catalog.songs) });
 }
 
 /** Replaces the votes and everything derived from them. */

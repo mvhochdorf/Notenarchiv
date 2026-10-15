@@ -4,8 +4,9 @@
  * @module
  */
 import { useSyncExternalStore } from "react";
+import { CLUB } from "./club";
 import { readStored, storageKey, writeStored } from "./local-store";
-import { mediaFor, type Media, type SnippetStart } from "./media";
+import { mediaFor, type MediaSources, type SnippetStart } from "./media";
 import type { Song } from "./song";
 
 /** Which pieces feed and list show. */
@@ -78,11 +79,9 @@ export type Settings = {
   readonly lastName: string;
 };
 
-/** What a new visitor gets. */
+/** What a new visitor gets, as the club set it in `verein/config.json`. */
 const DEFAULTS: Settings = {
-  show: "withMusic",
-  snippetStart: "peak",
-  atEnd: "repeat",
+  ...CLUB.defaults,
   firstName: "",
   lastName: "",
 };
@@ -120,16 +119,16 @@ export function changeSettings(change: Partial<Settings>): void {
  * Whether a piece is shown under a filter.
  *
  * @param show - the filter
- * @param linked - the links musicians made in the app
+ * @param sources - where the videos come from
  * @param song - the piece
  * @returns true if feed and list should show it
  */
 export function isShown(
   show: ShowFilter,
-  linked: Readonly<Record<string, Media>>,
+  sources: MediaSources,
   song: Song,
 ): boolean {
-  const hasMusic = mediaFor(linked, song.id) !== undefined;
+  const hasMusic = mediaFor(sources, song.id) !== undefined;
   let shown: boolean;
   switch (show) {
     case "withMusic":

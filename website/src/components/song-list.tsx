@@ -15,10 +15,10 @@ import {
   type ArchiveScope,
 } from "@/lib/archive-view";
 import { useVisitSeed } from "@/lib/browser-values";
+import { CLUB } from "@/lib/club";
 import {
   categories,
   filterSongs,
-  SONGS,
   SORT_LABELS,
   sortSongs,
   type SortOrder,
@@ -63,7 +63,7 @@ const AVERAGE_DIGITS = 1;
 export function SongList(): ReactElement {
   const archive = useArchive();
   const { show } = useSettings();
-  const shown = SONGS.filter((song) => isShown(show, archive.media, song));
+  const shown = archive.songs.filter((song) => isShown(show, archive, song));
   const genres = categories(shown, "genre");
   const occasions = categories(shown, "occasion");
   const seed = useVisitSeed() ?? 0;
@@ -117,7 +117,7 @@ export function SongList(): ReactElement {
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="mr-auto flex items-center gap-2 text-2xl font-black tracking-tight">
             <ClubLogo className="size-9" />
-            Notenarchiv
+            {CLUB.appName}
           </h1>
           <ModeNotice mode={archive.mode} />
         </div>
@@ -187,7 +187,7 @@ export function SongList(): ReactElement {
             ))}
           </select>
           <Link
-            href="/einstellungen/"
+            href="/profil/"
             className="ml-auto text-right text-sm text-white/50 hover:text-white"
           >
             {songs.length} Stücke
@@ -260,7 +260,7 @@ export function SongList(): ReactElement {
               >
                 <span className="block truncate font-semibold">
                   {song.title}
-                  {mediaFor(archive.media, song.id) !== undefined && (
+                  {mediaFor(archive, song.id) !== undefined && (
                     <span className="ml-1.5" title="Video verknüpft">
                       🎬
                     </span>

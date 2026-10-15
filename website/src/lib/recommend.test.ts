@@ -68,15 +68,23 @@ describe("stages", () => {
     }
   });
 
-  it("ends with what I liked or rated best", () => {
-    const ranked = rankTrend(
-      SONGS,
-      signals({
-        votes: { march1: { me: 1 }, march2: { me: 5 }, polka1: { me: 3 } },
-      }),
-      0.3,
-    );
-    expect(ids(ranked).slice(-3)).toEqual(["march2", "polka1", "march1"]);
+  it("mixes what I rated, mostly the best liked first, anew each visit", () => {
+    const rated = signals({
+      votes: { march1: { me: 1 }, march2: { me: 5 }, polka1: { me: 3 } },
+      likes: { march2: { me: true } },
+    });
+    const firsts = new Map<string, number>();
+    const orders = new Set<string>();
+    for (let visit = 0; visit < 200; visit++) {
+      const last = ids(rankTrend(SONGS, rated, visit / 200)).slice(-3);
+      firsts.set(last[0], (firsts.get(last[0]) ?? 0) + 1);
+      orders.add(last.join(","));
+    }
+    // The best liked leads most often, the worst rarely - and not always
+    // the same order.
+    expect(firsts.get("march2") ?? 0).toBeGreaterThan(100);
+    expect(firsts.get("march1") ?? 0).toBeLessThan(firsts.get("march2") ?? 0);
+    expect(orders.size).toBeGreaterThan(1);
   });
 
   it("never lets a popular seen piece jump ahead of an unseen one", () => {

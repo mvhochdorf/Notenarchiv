@@ -4,15 +4,16 @@
  * @module
  */
 
-/** A piece as listed in Notenliste.xlsx. */
+/** A piece of the archive. */
 export type Song = {
   /**
    * Stable key for the database.
    *
    * @remarks
-   * Built from the archive number and the title, see {@link songId}. Ratings
-   * and linked videos are stored under it, so it must not change when the
-   * spreadsheet is imported again.
+   * Built from the archive number and the title when the piece is added,
+   * see {@link songId}, and kept from then on - also when the admin
+   * corrects number or title. Ratings, likes and comments are stored under
+   * it.
    */
   readonly id: string;
   /** Archive number ("Neue Nr."), may carry a letter like `1553a`. */
@@ -31,6 +32,10 @@ export type Song = {
   readonly folderNumber: string | null;
   /** Book or collection the piece is part of ("Sammlung/Heft"). */
   readonly collection: string | null;
+  /** Day the piece came into the archive, `YYYY-MM-DD`; orders "Neu". */
+  readonly added?: string;
+  /** Person id of the musician who added it in the app, if one did. */
+  readonly addedBy?: string;
 };
 
 /** Longest slug part taken from a title. */

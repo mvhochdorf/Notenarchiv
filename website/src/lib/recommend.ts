@@ -4,7 +4,6 @@
  *
  * @module
  */
-import addedDates from "@/data/added.json";
 import { NO_RATING, type AllVotes, type RatingSummary } from "./ratings";
 import type { AllComments, Marks } from "./social";
 import type { Song } from "./song";
@@ -56,6 +55,18 @@ const STAGES = {
  * order - mostly what they rated or liked best.
  */
 const OWN_VERDICT_SHARE = 0.75;
+
+/**
+ * Smallest chance weight in the last stage, so a piece rated poorly still
+ * comes up now and then rather than always last.
+ */
+const MIN_WEIGHT = 0.05;
+
+/**
+ * How strongly the verdict decides in the last stage: the weight grows with
+ * the verdict to this power, so well liked pieces come first far more often.
+ */
+const WEIGHT_POWER = 2;
 
 /**
  * How much the others' approval counts among the pieces not seen yet,
@@ -113,9 +124,6 @@ const HASH_PRIME = 16_777_619;
 /** Start value of the string hash (FNV-1a offset). */
 const HASH_OFFSET = 2_166_136_261;
 
-/** When each piece first appeared in the spreadsheet, as `YYYY-MM-DD`. */
-const ADDED: Readonly<Record<string, string>> = addedDates;
-
 /**
  * The pieces in the order of a feed.
  *
@@ -130,7 +138,7 @@ const ADDED: Readonly<Record<string, string>> = addedDates;
  * fits the visitor's taste, "trend" what everybody likes. Among the pieces
  * the visitor has not seen yet, what the others rated well weighs most (see
  * {@link OTHERS_SHARE}); in the last stage the visitor's own stars and likes
- * do.
+ * do, in an order that changes with every visit (see `weightedShuffle`).
  */
 export function rankFeed(
   tab: FeedTab,
@@ -155,7 +163,7 @@ export function rankFeed(
   return [
     ...stages[STAGES.unseen].sort((a, b) => unseenFirst(b) - unseenFirst(a)),
     ...stages[STAGES.untouched].sort(byOrder),
-    ...stages[STAGES.judged].sort((a, b) => verdict(b) - verdict(a)),
+    ...weightedShuffle(stages[STAGES.judged], verdict, seed),
   ];
 }
 
@@ -237,6 +245,37 @@ function othersApproval(
   );
 }
 
+/**
+ * Shuffles pieces so that the better ones mostly, but not always, come first.
+ *
+ * @param songs - the pieces
+ * @param verdict - how much each piece is liked, from 0 to 1
+ * @param seed - the visit's chance; a new visit shuffles anew
+ * @returns the pieces in a weighted random order
+ * @remarks
+ * Weighted sampling without replacement (Efraimidis and Spirakis): every
+ * piece draws a key `u^(1/w)` from its chance `u` and weight `w`, and the
+ * keys are sorted. A piece twice as heavy is drawn ahead of another about
+ * twice as often - so the order changes with each visit, and what the
+ * visitor liked best still leads most of the time.
+ */
+function weightedShuffle(
+  songs: readonly Song[],
+  verdict: (song: Song) => number,
+  seed: number,
+): Song[] {
+  const key = (song: Song) => {
+    const weight = MIN_WEIGHT + verdict(song) ** WEIGHT_POWER;
+    // The chance must not be 0, or every key would be 0.
+    const chance = Math.max(noise(song.id, seed), Number.EPSILON);
+    return chance ** (1 / weight);
+  };
+  const keys = new Map(songs.map((song) => [song.id, key(song)]));
+  return [...songs].sort(
+    (a, b) => (keys.get(b.id) ?? 0) - (keys.get(a.id) ?? 0),
+  );
+}
+
 /** Which stage a piece is in for the visitor. */
 function stageOf(song: Song, signals: Signals): number {
   const { me } = signals;
@@ -310,7 +349,7 @@ function feedOrder(
 function newness(songs: readonly Song[], seed: number): Map<string, number> {
   const ranked = [...songs].sort(
     (a, b) =>
-      (ADDED[b.id] ?? "").localeCompare(ADDED[a.id] ?? "") ||
+      (b.added ?? "").localeCompare(a.added ?? "") ||
       archiveNumber(b) - archiveNumber(a) ||
       noise(b.id, seed) - noise(a.id, seed),
   );

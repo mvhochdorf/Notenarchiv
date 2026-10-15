@@ -26,7 +26,6 @@ import {
   categories,
   filterSongs,
   NO_FILTER,
-  SONGS,
   type Category,
 } from "@/lib/library";
 import { mediaFor } from "@/lib/media";
@@ -102,7 +101,10 @@ export function Feed(): ReactElement {
     // Set while rendering, as React allows for state derived from props:
     // the first order is fixed as soon as it can be worked out.
     // Opened from the archive: go through its list, as shown there.
-    const fromList = songsOf(hashId === "" ? null : queuedFor(hashId));
+    const fromList = songsOf(
+      archive.songs,
+      hashId === "" ? null : queuedFor(hashId),
+    );
     setFrozen(
       fromList ?? buildList(choice, show, archive, seed, hashId || null),
     );
@@ -118,8 +120,8 @@ export function Feed(): ReactElement {
     // feed has been laid out - then go through the archive's list from it,
     // or, for a shared link, put the piece first.
     setShownHash(hashId);
-    const fromList = songsOf(queuedFor(hashId));
-    const first = SONGS.find((song) => song.id === hashId);
+    const fromList = songsOf(archive.songs, queuedFor(hashId));
+    const first = archive.songs.find((song) => song.id === hashId);
     if (fromList !== undefined) {
       setFrozen(fromList);
       setFromArchive(true);
@@ -225,10 +227,7 @@ export function Feed(): ReactElement {
               <p>
                 Keine Stücke für diese Auswahl.
                 <br />
-                <Link
-                  href="/einstellungen/"
-                  className="text-amber-400 underline"
-                >
+                <Link href="/profil/" className="text-amber-400 underline">
                   Anzeige in den Einstellungen ändern
                 </Link>
               </p>
@@ -239,7 +238,7 @@ export function Feed(): ReactElement {
               <SongCard
                 key={song.id}
                 song={song}
-                media={mediaFor(archive.media, song.id)}
+                media={mediaFor(archive, song.id)}
                 summary={archive.summaries.get(song.id) ?? NO_RATING}
                 mine={archive.mine[song.id] ?? null}
                 active={index === active}
@@ -282,7 +281,7 @@ export function Feed(): ReactElement {
           fromArchive={fromArchive}
           mode={archive.mode}
           genres={categories(
-            SONGS.filter((song) => isShown(show, archive.media, song)),
+            archive.songs.filter((song) => isShown(show, archive, song)),
             "genre",
           )}
         />
@@ -296,8 +295,9 @@ export function Feed(): ReactElement {
       {editing !== null && (
         <LinkVideoDialog
           song={editing}
-          current={mediaFor(archive.media, editing.id)}
+          current={mediaFor(archive, editing.id)}
           ownLink={archive.media[editing.id] !== undefined}
+          inCatalog={archive.catalog.videos[editing.id] !== undefined}
           onClose={() => setEditing(null)}
         />
       )}
@@ -379,9 +379,12 @@ function FilterBar({
 }
 
 /** The pieces of a list of song ids, or undefined without a list. */
-function songsOf(ids: readonly string[] | null): Song[] | undefined {
+function songsOf(
+  songs: readonly Song[],
+  ids: readonly string[] | null,
+): Song[] | undefined {
   return ids
-    ?.map((id) => SONGS.find((song) => song.id === id))
+    ?.map((id) => songs.find((song) => song.id === id))
     .filter((song) => song !== undefined);
 }
 
@@ -395,8 +398,8 @@ function buildList(
 ): readonly Song[] {
   const ranked = rankFeed(
     choice.tab,
-    filterSongs(SONGS, { ...NO_FILTER, genre: choice.genre }).filter((song) =>
-      isShown(show, archive.media, song),
+    filterSongs(archive.songs, { ...NO_FILTER, genre: choice.genre }).filter(
+      (song) => isShown(show, archive, song),
     ),
     {
       votes: archive.votes,
@@ -409,7 +412,7 @@ function buildList(
     },
     seed,
   );
-  const first = SONGS.find((song) => song.id === firstId);
+  const first = archive.songs.find((song) => song.id === firstId);
   return first === undefined
     ? ranked
     : [first, ...ranked.filter((song) => song !== first)];

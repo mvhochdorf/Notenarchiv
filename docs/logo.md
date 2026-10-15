@@ -2,24 +2,24 @@
 
 Das Logo erscheint in der App an vier Stellen: in **Play** oben links, im
 **Archiv** oben links, bei der **Namensabfrage** beim ersten Öffnen und in den
-**Einstellungen** beim Namen.
+**Profil** beim Namen.
 
-Aktuell: `website/public/logo.png` (grünes Wappen, 1912).
+Aktuell: `website/verein/logo.png` (grünes Wappen, 1912).
+
+Es gibt nur diese eine Datei. Die Symbole für Browser-Tab und
+Handy-Startbildschirm (`icon.png`, 192 x 192, und `apple-icon.png`, 180 x 180
+auf Schwarz) erzeugt `npm run verein` daraus automatisch, beim Start
+(`npm run dev`) und beim Bauen. Ebenso legt es eine Kopie nach
+`public/logo.png`. Diese erzeugten Dateien sind nicht im Git.
 
 ## So geht's
 
-1. Das Logo als Datei besorgen - am besten:
-   - **SVG** (Vektorgrafik, bleibt in jeder Größe scharf), oder
-   - **PNG mit transparentem Hintergrund**, mindestens 256 x 256 Pixel,
-     möglichst quadratisch.
-2. Die Datei `website/public/logo.png` durch das neue Logo ersetzen.
-   - Ist es wieder eine **PNG**: einfach unter demselben Namen speichern.
-     Fertig.
-   - Ist es ein anderes Format (z. B. **SVG**): als `website/public/logo.svg`
-     ablegen, `logo.png` löschen und in
-     `website/src/components/club-logo.tsx` die Zeile
-     `const LOGO_FILE = "logo.png";` entsprechend ändern.
-3. Seite neu laden (bzw. `start.bat`). Nach dem nächsten Push ist das Logo
+1. Das Logo als **PNG mit transparentem Hintergrund** besorgen, am besten
+   512 x 512 Pixel oder größer, möglichst quadratisch. Kleinere Logos gehen
+   auch, die Symbole werden dann etwas weicher.
+2. Die Datei `website/verein/logo.png` durch das neue Logo ersetzen (gleicher
+   Name).
+3. Seite neu starten (`start.bat`). Nach dem nächsten Push ist das Logo
    auch auf <https://mvhochdorf.github.io/Notenarchiv/>.
 
 ## Tipps

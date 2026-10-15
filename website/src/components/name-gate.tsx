@@ -5,9 +5,11 @@
  */
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useState, type ReactElement } from "react";
 import { identify } from "@/lib/archive-store";
 import { useHydrated } from "@/lib/browser-values";
+import { CLUB } from "@/lib/club";
 import { MAX_NAME_PART, personId } from "@/lib/person";
 import { useSettings } from "@/lib/settings";
 import { ClubLogo } from "./club-logo";
@@ -29,7 +31,10 @@ export function NameGate(): ReactElement | null {
   const [lastName, setLastName] = useState("");
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
-  const named = personId(settings.firstName, settings.lastName) !== "";
+  // The admin page works without a name: nothing there is stored under it.
+  const adminPage = usePathname().startsWith("/verwaltung");
+  const named =
+    personId(settings.firstName, settings.lastName) !== "" || adminPage;
   const valid = personId(firstName, lastName) !== "";
 
   const submit = async () => {
@@ -59,7 +64,7 @@ export function NameGate(): ReactElement | null {
       >
         <div className="space-y-2 text-center">
           <ClubLogo className="mx-auto size-24" />
-          <h1 className="text-2xl font-black">Willkommen im Notenarchiv</h1>
+          <h1 className="text-2xl font-black">Willkommen im {CLUB.appName}</h1>
           <p className="text-sm text-white/60">
             Wie heißt du? Mit deinem Namen gehören deine Bewertungen, Likes und
             Kommentare auf Handy, Tablet und PC zusammen.

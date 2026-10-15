@@ -5,11 +5,9 @@
  * @remarks
  * The archive itself has no recordings. Every piece can have two links:
  *
- * - a fixed one in `src/data/youtube.json`, shipped with the site and found
- *   by `npm run youtube` (see scripts/find-youtube.mts)
- * - one a musician linked in the app, which wins over the fixed one
+ * - the one in the catalog, kept by the admin (see catalog.ts)
+ * - one a musician linked in the app, which wins over the catalog's
  */
-import fixedMedia from "@/data/youtube.json";
 
 /** A YouTube video linked to a piece. */
 export type Media = {
@@ -19,7 +17,7 @@ export type Media = {
   readonly start: number;
 };
 
-/** A fixed link as stored in `youtube.json`. */
+/** A link from the catalog. */
 export type FixedMedia = Media & {
   /** Title and channel of the video, for checking the file by hand. */
   readonly label?: string;
@@ -30,7 +28,7 @@ export type FixedMedia = Media & {
    * replayed" graph; null if the video has none (too few views).
    */
   readonly peak?: number | null;
-  /** Set on every fixed link, to tell it from one linked in the app. */
+  /** Set on every catalog link, to tell it from one linked in the app. */
   readonly fixed?: true;
 };
 
@@ -47,9 +45,9 @@ const RANDOM_FROM = 0.1;
  * @param mode - the visitor's choice
  * @returns true for a fixed link whose length is not known yet
  * @remarks
- * The length comes from `npm run youtube:details`. For links found after its
- * last run the page asks the player for the length and then jumps, see
- * {@link snippetStart}.
+ * Videos found when the club set up its catalog know their length (`npm run
+ * youtube:details`). For those the admin linked later the page asks the
+ * player for the length and then jumps, see {@link snippetStart}.
  */
 export function needsSeek(media: FixedMedia, mode: SnippetStart): boolean {
   return (
@@ -102,43 +100,29 @@ export function snippetStart(
   return Math.round(Math.min(Math.max(start, media.start, 0), latest));
 }
 
-/**
- * Shape of a YouTube video id.
- *
- * @remarks
- * Above {@link FIXED_MEDIA}, which already needs it while the module loads.
- */
+/** Shape of a YouTube video id. */
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 
-/**
- * The fixed links, by song id.
- *
- * @remarks
- * The file also notes the pieces the search found nothing for; those are
- * left out here.
- */
-export const FIXED_MEDIA: Readonly<Record<string, FixedMedia>> =
-  Object.fromEntries(
-    Object.entries(fixedMedia as Record<string, unknown>)
-      .filter(([, entry]) => isMedia(entry))
-      .map(([songId, entry]) => [
-        songId,
-        { ...(entry as FixedMedia), fixed: true },
-      ]),
-  ) as Record<string, FixedMedia>;
+/** Where the videos of the pieces come from. */
+export type MediaSources = {
+  /** The links musicians made in the app, by song id. */
+  readonly media: Readonly<Record<string, Media>>;
+  /** The catalog's links, by song id. */
+  readonly catalog: { readonly videos: Readonly<Record<string, FixedMedia>> };
+};
 
 /**
  * The video a piece plays.
  *
- * @param linked - the links musicians made in the app, by song id
+ * @param sources - the musicians' and the catalog's links
  * @param songId - which piece
- * @returns the musicians' link if there is one, else the fixed one
+ * @returns the musicians' link if there is one, else the catalog's
  */
 export function mediaFor(
-  linked: Readonly<Record<string, Media>>,
+  sources: MediaSources,
   songId: string,
 ): FixedMedia | undefined {
-  return linked[songId] ?? FIXED_MEDIA[songId];
+  return sources.media[songId] ?? sources.catalog.videos[songId];
 }
 
 /**
