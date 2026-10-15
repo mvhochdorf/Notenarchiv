@@ -74,6 +74,11 @@ export type Settings = {
   readonly show: ShowFilter;
   readonly snippetStart: SnippetStart;
   readonly atEnd: AtEnd;
+  /**
+   * Categories left out of Play. Kept as those switched off, so a category
+   * new to the archive shows up by itself.
+   */
+  readonly playGenresOff: readonly string[];
   /** The visitor's name, asked for once per device; see person.ts. */
   readonly firstName: string;
   readonly lastName: string;
@@ -82,6 +87,7 @@ export type Settings = {
 /** What a new visitor gets, as the club set it in `verein/config.json`. */
 const DEFAULTS: Settings = {
   ...CLUB.defaults,
+  playGenresOff: [],
   firstName: "",
   lastName: "",
 };
@@ -178,6 +184,9 @@ function isSettings(value: unknown): value is Settings {
     (settings.snippetStart === undefined ||
       settings.snippetStart in START_OPTIONS) &&
     (settings.atEnd === undefined || settings.atEnd in END_OPTIONS) &&
+    (settings.playGenresOff === undefined ||
+      (Array.isArray(settings.playGenresOff) &&
+        settings.playGenresOff.every((genre) => typeof genre === "string"))) &&
     (settings.firstName === undefined ||
       typeof settings.firstName === "string") &&
     (settings.lastName === undefined || typeof settings.lastName === "string")

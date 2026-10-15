@@ -109,6 +109,13 @@ export type Maintenance = {
  */
 const BUILD_MAINTENANCE = process.env.NEXT_PUBLIC_MAINTENANCE === "true";
 
+/**
+ * Parts the archive works without: when the published rules do not cover
+ * them yet, they stay empty without a warning. The inbox then only shows
+ * comments.
+ */
+const OPTIONAL_NODES: ReadonlySet<string> = new Set(["news"]);
+
 /** Base of the random part of local comment ids (digits and letters). */
 const ID_RADIX = 36;
 
@@ -367,7 +374,12 @@ export async function noteNews(
     const { ref, remove, serverTimestamp, set } =
       await import("firebase/database");
     const path = ref(database(), `${ROOT}/news/${songId}/${person}/${kind}`);
-    await written(on ? set(path, serverTimestamp()) : remove(path));
+    try {
+      await (on ? set(path, serverTimestamp()) : remove(path));
+    } catch {
+      // Rules published before the inbox existed refuse it; the like or
+      // rating itself is stored all the same, see OPTIONAL_NODES.
+    }
   }
 }
 
@@ -566,10 +578,12 @@ async function start(): Promise<void> {
           (error) => {
             // Mostly rules that do not know this part yet (published before
             // it was added). The rest of the archive still works.
-            console.warn(
-              `Notenarchiv: "${node}" nicht lesbar - Regeln aus database.rules.json neu veröffentlichen?`,
-              error,
-            );
+            if (!OPTIONAL_NODES.has(node)) {
+              console.warn(
+                `Notenarchiv: "${node}" nicht lesbar - Regeln aus database.rules.json neu veröffentlichen?`,
+                error,
+              );
+            }
             answered(node);
           },
         );

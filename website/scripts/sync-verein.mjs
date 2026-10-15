@@ -10,7 +10,8 @@
  * centred. It runs by itself before `npm run dev` and `npm run build`; its
  * results are not committed (see .gitignore).
  */
-import { copyFileSync, existsSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 
@@ -29,7 +30,15 @@ const APPLE_BACKGROUND = { r: 0, g: 0, b: 0, alpha: 1 };
 /** Nothing behind the logo. */
 const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
 
-const here = (path) => fileURLToPath(new URL(`../${path}`, import.meta.url));
+/**
+ * A path in the website folder, its folder made if missing - `public/`
+ * only holds generated files and is not in Git, so a fresh checkout has none.
+ */
+const here = (path) => {
+  const full = fileURLToPath(new URL(`../${path}`, import.meta.url));
+  mkdirSync(dirname(full), { recursive: true });
+  return full;
+};
 
 const logo = here("verein/logo.png");
 

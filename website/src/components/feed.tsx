@@ -22,12 +22,7 @@ import {
 } from "@/lib/archive-store";
 import { clearPlayQueue, queuedFor } from "@/lib/archive-view";
 import { reshuffle, useHashSongId, useVisitSeed } from "@/lib/browser-values";
-import {
-  categories,
-  filterSongs,
-  NO_FILTER,
-  type Category,
-} from "@/lib/library";
+import { categories, type Category } from "@/lib/library";
 import { mediaFor } from "@/lib/media";
 import { NO_RATING } from "@/lib/ratings";
 import { FEED_TABS, rankFeed, type FeedTab } from "@/lib/recommend";
@@ -36,6 +31,7 @@ import type { Song } from "@/lib/song";
 import { isMarked, markCount } from "@/lib/social";
 import { ClubLogo } from "./club-logo";
 import { CommentsSheet } from "./comments-sheet";
+import { GenreMenu, SearchButton, SearchOverlay } from "./feed-controls";
 import { LinkVideoDialog } from "./link-video-dialog";
 import { ModeNotice } from "./mode-notice";
 import { SongCard } from "./song-card";
@@ -53,13 +49,22 @@ const RENDER_AROUND = 2;
 const PRELOAD_BEFORE = 1;
 const PRELOAD_AFTER = 2;
 
+/** What the top says while Play goes through the archive's list. */
+const FROM_ARCHIVE = "☰ Reihenfolge aus dem Archiv";
+
 /** How long a piece has to be on screen to count as seen. */
 const SEEN_AFTER_MS = 3000;
 
-/** The feed and category chosen by the visitor. */
+/** The feed chosen by the visitor. */
 type FeedChoice = {
-  readonly genre: string | null;
   readonly tab: FeedTab;
+};
+
+/** What Play shows: the visitor's settings that pick the pieces. */
+type Selection = {
+  readonly show: ShowFilter;
+  /** Categories switched off for Play. */
+  readonly genresOff: readonly string[];
 };
 
 /**
@@ -76,25 +81,24 @@ export function Feed(): ReactElement {
   const archive = useArchive();
   const seed = useVisitSeed();
   const hashId = useHashSongId();
-  const { show } = useSettings();
-  const [choice, setChoice] = useState<FeedChoice>({
-    genre: null,
-    tab: "forYou",
-  });
+  const { show, playGenresOff } = useSettings();
+  const selection: Selection = { show, genresOff: playGenresOff };
+  const [choice, setChoice] = useState<FeedChoice>({ tab: "forYou" });
   const [frozen, setFrozen] = useState<readonly Song[] | null>(null);
   const [active, setActive] = useState(0);
   // Sound is on; only a browser that blocks it before the first touch makes
   // the feed start silent, see VideoPlayer's onSoundBlocked.
   const [muted, setMuted] = useState(false);
   const [shownHash, setShownHash] = useState<string | null>(null);
-  // Whether the order came from the archive list rather than a tab.
-  const [fromArchive, setFromArchive] = useState(false);
+  // Where the order came from when not from a tab: the archive or a search.
+  const [queueLabel, setQueueLabel] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
   const [editing, setEditing] = useState<Song | null>(null);
   const [commenting, setCommenting] = useState<{
     song: Song;
     kind: NoteKind;
   } | null>(null);
-  const dialogOpen = editing !== null || commenting !== null;
+  const dialogOpen = editing !== null || commenting !== null || searching;
   const scroller = useRef<HTMLDivElement>(null);
 
   if (frozen === null && seed !== null && hashId !== null && archive.ready) {
@@ -106,9 +110,9 @@ export function Feed(): ReactElement {
       hashId === "" ? null : queuedFor(hashId),
     );
     setFrozen(
-      fromList ?? buildList(choice, show, archive, seed, hashId || null),
+      fromList ?? buildList(choice, selection, archive, seed, hashId || null),
     );
-    setFromArchive(fromList !== undefined);
+    setQueueLabel(fromList === undefined ? null : FROM_ARCHIVE);
     setShownHash(hashId);
   } else if (
     frozen !== null &&
@@ -124,7 +128,7 @@ export function Feed(): ReactElement {
     const first = archive.songs.find((song) => song.id === hashId);
     if (fromList !== undefined) {
       setFrozen(fromList);
-      setFromArchive(true);
+      setQueueLabel(FROM_ARCHIVE);
       setActive(0);
     } else if (first !== undefined && frozen[0] !== first) {
       setFrozen([first, ...frozen.filter((song) => song !== first)]);
@@ -204,12 +208,17 @@ export function Feed(): ReactElement {
   } else {
     const songs = frozen;
 
-    const choose = (next: FeedChoice) => {
-      setChoice(next);
-      setFromArchive(false);
-      setFrozen(buildList(next, show, archive, reshuffle(), null));
+    // Lays Play out anew, from the first piece.
+    const restart = (list: readonly Song[], label: string | null) => {
+      setFrozen(list);
+      setQueueLabel(label);
       setActive(0);
       scroller.current?.scrollTo({ top: 0 });
+    };
+
+    const choose = (next: FeedChoice) => {
+      setChoice(next);
+      restart(buildList(next, selection, archive, reshuffle(), null), null);
     };
 
     content = (
@@ -241,7 +250,7 @@ export function Feed(): ReactElement {
                 media={mediaFor(archive, song.id)}
                 summary={archive.summaries.get(song.id) ?? NO_RATING}
                 mine={archive.mine[song.id] ?? null}
-                active={index === active}
+                active={index === active && !searching}
                 preload={
                   index >= active - PRELOAD_BEFORE &&
                   index <= active + PRELOAD_AFTER
@@ -278,13 +287,40 @@ export function Feed(): ReactElement {
         <FilterBar
           choice={choice}
           onChoose={choose}
-          fromArchive={fromArchive}
+          queueLabel={queueLabel}
           mode={archive.mode}
           genres={categories(
             archive.songs.filter((song) => isShown(show, archive, song)),
             "genre",
           )}
+          onGenres={(genresOff) =>
+            restart(
+              buildList(
+                choice,
+                { show, genresOff },
+                archive,
+                reshuffle(),
+                null,
+              ),
+              null,
+            )
+          }
+          onSearch={() => setSearching(true)}
         />
+        {searching && (
+          <SearchOverlay
+            songs={archive.songs.filter((song) => isShown(show, archive, song))}
+            archive={archive}
+            onClose={() => setSearching(false)}
+            onPlay={(results, index, query) => {
+              setSearching(false);
+              restart(
+                [...results.slice(index), ...results.slice(0, index)],
+                `🔍 „${query.trim()}“`,
+              );
+            }}
+          />
+        )}
       </>
     );
   }
@@ -312,21 +348,26 @@ export function Feed(): ReactElement {
   );
 }
 
-/** The tabs and the category filter floating over the top of the feed. */
+/** The tabs, categories and search floating over the top of the feed. */
 function FilterBar({
   choice,
   onChoose,
-  fromArchive,
+  queueLabel,
   mode,
   genres,
+  onGenres,
+  onSearch,
 }: {
   readonly choice: FeedChoice;
   readonly onChoose: (choice: FeedChoice) => void;
-  /** Whether the pieces come in the archive's order; no tab is chosen then. */
-  readonly fromArchive: boolean;
+  /** Where the order comes from when no tab is chosen. */
+  readonly queueLabel: string | null;
   readonly mode: ArchiveState["mode"];
   readonly genres: readonly Category[];
+  readonly onGenres: (genresOff: readonly string[]) => void;
+  readonly onSearch: () => void;
 }): ReactElement {
+  const fromArchive = queueLabel !== null;
   return (
     <div className="absolute inset-x-0 top-0 z-10 space-y-2 px-4 pt-3">
       <div className="flex items-center gap-2">
@@ -352,25 +393,14 @@ function FilterBar({
             </button>
           ))}
         </nav>
-        <select
-          aria-label="Sparte"
-          value={choice.genre ?? ""}
-          onChange={(event) =>
-            onChoose({ ...choice, genre: event.target.value || null })
-          }
-          className="w-24 truncate rounded-full bg-black/40 px-2 py-1 text-xs font-semibold backdrop-blur outline-none"
-        >
-          <option value="">Alle Sparten</option>
-          {genres.map((genre) => (
-            <option key={genre.name} value={genre.name}>
-              {genre.name} ({genre.count})
-            </option>
-          ))}
-        </select>
+        <span className="flex w-24 justify-end gap-2">
+          <GenreMenu genres={genres} onChange={onGenres} />
+          <SearchButton onClick={onSearch} />
+        </span>
       </div>
-      {fromArchive && (
-        <p className="mx-auto w-fit rounded-full bg-black/60 px-3 py-1 text-xs font-semibold backdrop-blur">
-          ☰ Reihenfolge aus dem Archiv
+      {queueLabel !== null && (
+        <p className="mx-auto w-fit max-w-full truncate rounded-full bg-black/60 px-3 py-1 text-xs font-semibold backdrop-blur">
+          {queueLabel}
         </p>
       )}
       <ModeNotice mode={mode} />
@@ -391,15 +421,17 @@ function songsOf(
 /** The feed's pieces for a choice, a linked piece first if there is one. */
 function buildList(
   choice: FeedChoice,
-  show: ShowFilter,
+  selection: Selection,
   archive: ArchiveState,
   seed: number,
   firstId: string | null,
 ): readonly Song[] {
   const ranked = rankFeed(
     choice.tab,
-    filterSongs(archive.songs, { ...NO_FILTER, genre: choice.genre }).filter(
-      (song) => isShown(show, archive, song),
+    archive.songs.filter(
+      (song) =>
+        isShown(selection.show, archive, song) &&
+        (song.genre === null || !selection.genresOff.includes(song.genre)),
     ),
     {
       votes: archive.votes,

@@ -105,6 +105,17 @@ Ein Stück gilt als gesehen, wenn es 3 Sekunden im Bild war. Die nächsten zwei
 Videos laufen unsichtbar und stumm mit Viertel-Geschwindigkeit vor, damit sie
 beim Swipen sofort und ohne YouTube-Einblendung starten.
 
+Oben rechts:
+
+- **Sparten** (Regler-Symbol) - Häkchen für jede Sparte, mehrere gleichzeitig,
+  mit "Alle" und "Keine". Die Wahl bleibt im Browser gespeichert. Ist nicht
+  alles an, hat der Knopf einen gelben Rand und zeigt, wie viele Sparten an
+  sind.
+- **Suche** (Lupe) - nach Titel, Komponist, Bearbeiter oder Nummer. Die
+  Treffer erscheinen als Raster von Vorschaubildern wie bei TikTok: auf dem
+  Handy 2 Spalten (etwa 4 Videos auf einmal), am PC bis zu 6. Ein Tipp spielt
+  das Video, Wischen geht durch die übrigen Treffer.
+
 - **Tippen** aufs Video: Pause / weiter (beim ersten Mal: Ton einschalten)
 - **Doppeltippen**: Gefällt mir
 - **Gedrückt halten**: doppelte Geschwindigkeit
