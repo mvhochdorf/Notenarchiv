@@ -171,6 +171,43 @@ Diesen Link an die Musikerinnen und Musiker verschicken. Beim ersten Öffnen
 fragt die App nach Vor- und Nachname - bitte auf allen Geräten gleich
 schreiben.
 
+## Schritt 10 - Web-Schlüssel einschränken (empfohlen)
+
+Der `apiKey` aus Schritt 5 steht öffentlich in der App und im Repository.
+Das ist bei Firebase so vorgesehen: Er sagt Google nur, zu welchem Projekt
+die App gehört, und gibt keinen Zugriff auf die Daten - die schützen die
+Regeln aus Schritt 4 und das Verwaltungs-Passwort. Damit er aber für nichts
+anderes taugt als die Anmeldung, wird er eingeschränkt:
+
+1. <https://console.cloud.google.com> öffnen, oben das Projekt (z. B.
+   `notenarchiv-mvhochdorf`) wählen.
+2. **APIs & Dienste** -> **Anmeldedaten**.
+3. Den Schlüssel **Browser key (auto created by Firebase)** öffnen.
+4. **Anwendungseinschränkungen**: auf **Keine** lassen.
+   - Nicht "Websites": das sperrt den nächtlichen GitHub-Job für die
+     Video-Details aus (er läuft nicht im Browser) und lokale Tests.
+   - Nicht "IP-Adressen", "Android-Apps" oder "iOS-Apps": Handys wechseln
+     ständig ihre Adresse, und die App ist eine Webseite, keine Store-App.
+5. **API-Einschränkungen**: **Schlüssel einschränken** wählen und nur diese
+   beiden ankreuzen:
+   - **Identity Toolkit API**
+   - **Token Service API**
+6. **Speichern**.
+
+Danach läuft alles wie vorher: Musiker melden sich anonym an (bewerten,
+liken, kommentieren, neue Stücke über **＋**), die Verwaltung mit dem
+Passwort, ebenso der nächtliche GitHub-Job. Die Datenbank selbst braucht
+den Schlüssel nicht. Hakt doch etwas, im selben Fenster **Schlüssel nicht
+einschränken** wählen - dann ist sofort alles wie vorher.
+
+**Meldung von GitHub** ("Secrets detected ... Google API Key"): GitHub
+erkennt nur das Muster, nicht dass es ein öffentlicher Firebase-Schlüssel
+ist. Neu erzeugen bringt nichts, auch der neue stünde in der App. Im
+Repository **Security** -> **Secret scanning** die Meldung öffnen und mit
+**Close as** -> **False positive** schließen, Kommentar z. B.
+"Firebase-Web-API-Key, öffentlich vorgesehen, per API-Einschränkung
+begrenzt".
+
 ---
 
 ## Später: Auswerten und sichern
@@ -190,7 +227,9 @@ lehnt die Datenbank die neuen Daten ab.
 ## Gut zu wissen
 
 - **Kosten**: Der Spark-Tarif ist kostenlos (1 GB Speicher, 10 GB Download
-  pro Monat). Für einen Verein reicht das bei Weitem. Firebase fragt nie
+  pro Monat, 100 gleichzeitige Verbindungen). Die Grenzen gelten pro
+  Projekt - jeder Verein mit eigenem Projekt hat sie also für sich. Für
+  einen Verein reicht das bei Weitem. Firebase fragt nie
   automatisch nach Geld; ohne Hinterlegen einer Zahlungsart kann nichts
   berechnet werden.
 - **Name statt Passwort**: Wer einen fremden Namen eintippt, kann als diese

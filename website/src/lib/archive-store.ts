@@ -43,7 +43,13 @@ import { isFirebaseConfigured } from "./firebase-config";
 import { readStored, storageKey, writeStored } from "./local-store";
 import { visibleSongs } from "./library";
 import { isMedia, type Media } from "./media";
-import { validNews, type NewsKind, type NewsTimes } from "./news";
+import {
+  validAnnouncements,
+  validNews,
+  type Announcement,
+  type NewsKind,
+  type NewsTimes,
+} from "./news";
 import { displayName, personId } from "./person";
 import {
   isStars,
@@ -114,7 +120,7 @@ const BUILD_MAINTENANCE = process.env.NEXT_PUBLIC_MAINTENANCE === "true";
  * them yet, they stay empty without a warning. The inbox then only shows
  * comments.
  */
-const OPTIONAL_NODES: ReadonlySet<string> = new Set(["news"]);
+const OPTIONAL_NODES: ReadonlySet<string> = new Set(["news", "announcements"]);
 
 /** Base of the random part of local comment ids (digits and letters). */
 const ID_RADIX = 36;
@@ -150,6 +156,8 @@ export type ArchiveState = {
   readonly reports: AllComments;
   /** When people liked, rated or added pieces, for the inbox. */
   readonly news: NewsTimes;
+  /** The archive's news chat, oldest first; written by the admins. */
+  readonly announcements: readonly Announcement[];
   /** The visitor's person id, empty until they gave their name. */
   readonly me: string;
   /** Everybody's name, by person id, as their devices registered it. */
@@ -174,6 +182,7 @@ const INITIAL: ArchiveState = {
   comments: {},
   reports: {},
   news: {},
+  announcements: [],
   me: "",
   people: {},
   maintenance: { on: BUILD_MAINTENANCE, message: "" },
@@ -561,6 +570,7 @@ async function start(): Promise<void> {
         "media",
         "users",
         "news",
+        "announcements",
         ...NOTE_KINDS,
         ...MARK_KINDS,
       ]);
@@ -595,6 +605,9 @@ async function start(): Promise<void> {
         listen(kind, (value) => update({ [kind]: validComments(value) }));
       }
       listen("news", (value) => update({ news: validNews(value) }));
+      listen("announcements", (value) =>
+        update({ announcements: validAnnouncements(value) }),
+      );
       listen("users", (value) =>
         update({ people: { ...peopleOf(value), ...ownName() } }),
       );

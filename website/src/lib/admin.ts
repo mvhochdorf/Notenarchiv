@@ -23,9 +23,12 @@ import {
 import {
   get,
   getDatabase,
+  push,
   ref,
   remove,
+  serverTimestamp,
   set,
+  update,
   type Database,
 } from "firebase/database";
 import { useSyncExternalStore } from "react";
@@ -149,6 +152,45 @@ export async function saveSong(
  */
 export async function deleteSong(songId: string): Promise<void> {
   await remove(ref(adminDatabase(), `${ROOT}/catalog/${songId}`));
+}
+
+/**
+ * Writes a message to the archive's news chat.
+ *
+ * @param text - the message
+ */
+export async function postAnnouncement(text: string): Promise<void> {
+  await push(ref(adminDatabase(), `${ROOT}/announcements`), {
+    text,
+    at: serverTimestamp(),
+  });
+}
+
+/**
+ * Changes the text of a message in the news chat.
+ *
+ * @param id - which message
+ * @param text - the new text
+ * @remarks
+ * The message keeps its place and time; it is marked as edited.
+ */
+export async function editAnnouncement(
+  id: string,
+  text: string,
+): Promise<void> {
+  await update(ref(adminDatabase(), `${ROOT}/announcements/${id}`), {
+    text,
+    edited: serverTimestamp(),
+  });
+}
+
+/**
+ * Deletes a message from the news chat.
+ *
+ * @param id - which message
+ */
+export async function deleteAnnouncement(id: string): Promise<void> {
+  await remove(ref(adminDatabase(), `${ROOT}/announcements/${id}`));
 }
 
 /**

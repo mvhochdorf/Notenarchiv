@@ -20,11 +20,12 @@ import { categories, filterSongs, NO_FILTER } from "@/lib/library";
 import {
   parseYouTube,
   searchUrl,
-  thumbnailUrl,
+  snippetStart,
   type FixedMedia,
   type Media,
 } from "@/lib/media";
 import type { Song } from "@/lib/song";
+import { VideoStartPicker } from "./video-start-picker";
 
 /** Label of each field, as the club's list calls them. */
 const FIELD_LABELS: Readonly<Record<SongField, string>> = {
@@ -40,14 +41,21 @@ const FIELD_LABELS: Readonly<Record<SongField, string>> = {
   collection: "Sammlung/Heft",
 };
 
+/** The fields always shown; the others wait under "Weitere Daten". */
+const MAIN_FIELDS: readonly SongField[] = [
+  "number",
+  "title",
+  "composer",
+  "arranger",
+];
+
+/** The fields shown once "Weitere Daten" is opened. */
+const MORE_FIELDS: readonly SongField[] = SONG_FIELDS.filter(
+  (field) => !MAIN_FIELDS.includes(field),
+);
+
 /** Fields offered with the values already in use. */
 const LISTED_FIELDS: ReadonlySet<SongField> = new Set(["genre", "occasion"]);
-
-/** Seconds per minute, for showing lengths. */
-const SECONDS_PER_MINUTE = 60;
-
-/** Digits of the seconds in `m:ss`. */
-const SECOND_DIGITS = 2;
 
 /** Shortest title worth looking for similar pieces. */
 const MIN_SIMILAR_QUERY = 3;
@@ -110,31 +118,71 @@ export function SongForm({
   const [link, setLink] = useState(
     current === undefined ? "" : `https://youtu.be/${current.videoId}`,
   );
-  const [start, setStart] = useState(String(current?.start ?? 0));
+  // A start somebody chose, rather than YouTube's highlight: one that
+  // differs from it, or a musician's own link.
+  const [startChosen, setStartChosen] = useState(
+    current !== undefined &&
+      (stored === undefined
+        ? current.start > 0
+        : typeof stored.peak === "number" &&
+          stored.youtubePeak !== undefined &&
+          stored.peak !== stored.youtubePeak),
+  );
+  // The chosen start; while none is chosen, where the snippet starts now.
+  const [start, setStart] = useState(() =>
+    current === undefined ? 0 : snippetStart(current, "peak", 0),
+  );
+  const chooseStart = (seconds: number) => {
+    setStart(seconds);
+    setStartChosen(true);
+  };
   const [noVideo, setNoVideo] = useState(
     song !== null && catalog.noVideo.has(song.id),
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Open from the start when a piece already has some of these filled in.
+  const [moreOpen, setMoreOpen] = useState(() =>
+    MORE_FIELDS.some((field) => (song?.[field] ?? "") !== ""),
+  );
 
   const parsed = link.trim() === "" ? null : parseYouTube(link);
   const linkInvalid = link.trim() !== "" && parsed === null;
   const title = fields.title.trim();
+  // The same video keeps what is known about it: length, label, start.
+  const known = stored?.videoId === parsed?.videoId ? stored : undefined;
+  // YouTube's highlight; videos described before it was kept apart have it
+  // as their peak.
+  const youtubePeak =
+    known?.youtubePeak ??
+    (known?.youtubePeak === undefined && typeof known?.peak === "number"
+      ? known.peak
+      : undefined);
   const video: FixedMedia | undefined =
     parsed === null
       ? undefined
       : {
-          // Length and peak found by the search stay with the same video.
-          ...(stored?.videoId === parsed.videoId ? stored : {}),
+          ...known,
           videoId: parsed.videoId,
-          start: Math.max(0, Math.floor(Number(start) || 0)),
+          // A chosen start is the snippet's start: Play's "Höhepunkt" begins
+          // there, and no other start goes before it.
+          ...(startChosen
+            ? {
+                start: Math.min(known?.start ?? parsed.start, start),
+                peak: start,
+              }
+            : {
+                start: known?.start ?? parsed.start,
+                // Back to YouTube's highlight, or none until the job finds it.
+                peak: youtubePeak,
+              }),
         };
 
   const changeLink = (value: string) => {
     setLink(value);
     const media = parseYouTube(value);
     if (media !== null && media.start > 0) {
-      setStart(String(media.start));
+      chooseStart(media.start);
     }
   };
 
@@ -209,6 +257,35 @@ export function SongForm({
         )
       : [];
 
+  /** One field with its label. */
+  const input = (field: SongField) => (
+    <label key={field} className="block space-y-1">
+      <span className="text-sm text-white/70">{FIELD_LABELS[field]}</span>
+      <input
+        value={fields[field]}
+        onChange={(event) =>
+          setFields({ ...fields, [field]: event.target.value })
+        }
+        maxLength={MAX_FIELD_LENGTH}
+        list={LISTED_FIELDS.has(field) ? `values-${field}` : undefined}
+        required={field === "title"}
+        className={inputClass}
+      />
+      {field === "title" && similar.length > 0 && (
+        <span className="block rounded-xl bg-amber-400/10 p-3 text-sm">
+          <span className="block text-amber-200">Gibt es das schon?</span>
+          {similar.map((each) => (
+            <span key={each.id} className="block text-white/70">
+              {[each.number, each.title, each.composer]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+          ))}
+        </span>
+      )}
+    </label>
+  );
+
   return (
     <form
       className="space-y-4"
@@ -217,38 +294,23 @@ export function SongForm({
         void save();
       }}
     >
-      <div className="grid gap-3 sm:grid-cols-2">
-        {SONG_FIELDS.map((field) => (
-          <label
-            key={field}
-            className={`block space-y-1 ${field === "title" ? "sm:col-span-2" : ""}`}
-          >
-            <span className="text-sm text-white/70">{FIELD_LABELS[field]}</span>
-            <input
-              value={fields[field]}
-              onChange={(event) =>
-                setFields({ ...fields, [field]: event.target.value })
-              }
-              maxLength={MAX_FIELD_LENGTH}
-              list={LISTED_FIELDS.has(field) ? `values-${field}` : undefined}
-              required={field === "title"}
-              className={inputClass}
-            />
-            {field === "title" && similar.length > 0 && (
-              <span className="block rounded-xl bg-amber-400/10 p-3 text-sm">
-                <span className="block text-amber-200">Gibt es das schon?</span>
-                {similar.map((each) => (
-                  <span key={each.id} className="block text-white/70">
-                    {[each.number, each.title, each.composer]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                ))}
-              </span>
-            )}
-          </label>
-        ))}
-      </div>
+      <div className="grid gap-3 sm:grid-cols-2">{MAIN_FIELDS.map(input)}</div>
+      <details
+        open={moreOpen}
+        onToggle={(event) => setMoreOpen(event.currentTarget.open)}
+        className="rounded-2xl bg-white/5"
+      >
+        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-white/70 select-none">
+          Weitere Daten
+          <span className="font-normal text-white/40">
+            {" "}
+            - Sparte, Anlass, Solo, Verlag, Nr. im Ordner, Sammlung
+          </span>
+        </summary>
+        <div className="grid gap-3 px-4 pb-4 sm:grid-cols-2">
+          {MORE_FIELDS.map(input)}
+        </div>
+      </details>
       {[...LISTED_FIELDS].map((field) => (
         <datalist key={field} id={`values-${field}`}>
           {categories(catalog.songs, field as "genre" | "occasion").map(
@@ -296,31 +358,16 @@ export function SongForm({
           </p>
         )}
         {video !== undefined && (
-          <div className="flex flex-wrap items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element -- static export, no image optimization */}
-            <img src={thumbnailUrl(video)} alt="" className="h-20 rounded-lg" />
-            <div className="space-y-2 text-sm">
-              <label className="flex items-center gap-2">
-                Ausschnitt frühestens ab Sekunde
-                <input
-                  type="number"
-                  min={0}
-                  value={start}
-                  onChange={(event) => setStart(event.target.value)}
-                  className="w-20 rounded-lg bg-zinc-800 px-2 py-1 outline-none focus:ring-2 focus:ring-amber-400"
-                />
-              </label>
-              <p className="text-white/50">
-                {video.duration === undefined
-                  ? "Länge und Höhepunkt werden über Nacht ermittelt."
-                  : `Länge ${minutes(video.duration)}${
-                      video.peak === undefined || video.peak === null
-                        ? ""
-                        : ` · Höhepunkt bei ${minutes(video.peak)}`
-                    }`}
-              </p>
-            </div>
-          </div>
+          <VideoStartPicker
+            // A fresh player for another video.
+            key={video.videoId}
+            media={video}
+            start={startChosen ? start : youtubePeak}
+            onStart={chooseStart}
+            chosen={startChosen}
+            youtubePeak={youtubePeak}
+            duration={video.duration}
+          />
         )}
         {video === undefined && (
           <label className="flex items-center gap-2 text-sm">
@@ -368,12 +415,4 @@ export function SongForm({
       </div>
     </form>
   );
-}
-
-/** Seconds as `m:ss`. */
-function minutes(seconds: number): string {
-  const whole = Math.round(seconds);
-  return `${Math.floor(whole / SECONDS_PER_MINUTE)}:${String(
-    whole % SECONDS_PER_MINUTE,
-  ).padStart(SECOND_DIGITS, "0")}`;
 }

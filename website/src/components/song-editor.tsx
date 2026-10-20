@@ -44,7 +44,7 @@ export function SongEditor({
         role="dialog"
         aria-modal="true"
         aria-labelledby="song-editor-title"
-        className="w-full max-w-xl space-y-4 rounded-3xl bg-zinc-900 p-6 text-white shadow-2xl"
+        className="w-full max-w-3xl space-y-4 rounded-3xl bg-zinc-900 p-6 text-white shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <h2 id="song-editor-title" className="text-lg font-bold">

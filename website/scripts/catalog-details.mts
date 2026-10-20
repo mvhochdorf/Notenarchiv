@@ -10,9 +10,13 @@
  * stores
  *
  * - `duration`: the length in seconds
- * - `peak`: where the most watched snippet-long stretch begins - left out
- *   when YouTube shows no graph (videos with few views); the snippet then
- *   starts in the middle
+ * - `youtubePeak`: where the most watched snippet-long stretch begins - left
+ *   out when YouTube shows no graph (videos with few views)
+ * - `peak`, the snippet's start, set to the same - unless the admin chose a
+ *   start of their own, which always wins
+ *
+ * Videos described before `youtubePeak` existed got their peak from YouTube
+ * too; for them it is copied over, without loading anything.
  *
  * Runs every night as a GitHub workflow (.github/workflows/video-details.yml)
  * and by hand with `npm run catalog:details`. The password comes from the
@@ -81,6 +85,20 @@ async function main(): Promise<number> {
     string,
     { readonly video?: StoredVideo }
   >;
+  // Described before YouTube's highlight was kept apart: their peak is it.
+  const older = Object.entries(catalog).filter(
+    ([, entry]) =>
+      entry.video?.duration !== undefined &&
+      entry.video.peak !== undefined &&
+      entry.video.youtubePeak === undefined,
+  );
+  for (const [songId, entry] of older) {
+    await keepYouTubePeak(db, songId, entry.video?.videoId ?? "");
+  }
+  if (older.length > 0) {
+    console.log(`${older.length} Höhepunkte als YouTube-Höhepunkt übernommen.`);
+  }
+
   const todo = Object.entries(catalog)
     .filter(([, entry]) => entry.video && entry.video.duration === undefined)
     .slice(0, limit);
@@ -125,7 +143,30 @@ async function store(
     ref(db, `${CATALOG}/${songId}/video`),
     (current: StoredVideo | null) =>
       current?.videoId === videoId
-        ? { ...current, duration, ...(peak === null ? {} : { peak }) }
+        ? {
+            ...current,
+            duration,
+            ...(peak === null ? {} : { youtubePeak: peak }),
+            // A start the admin chose wins over the one YouTube suggests.
+            ...(peak === null || current.peak !== undefined ? {} : { peak }),
+          }
+        : undefined,
+  );
+}
+
+/** Notes a video's peak, found by YouTube earlier, as YouTube's highlight. */
+async function keepYouTubePeak(
+  db: Database,
+  songId: string,
+  videoId: string,
+): Promise<void> {
+  await runTransaction(
+    ref(db, `${CATALOG}/${songId}/video`),
+    (current: StoredVideo | null) =>
+      current?.videoId === videoId &&
+      current.peak !== undefined &&
+      current.youtubePeak === undefined
+        ? { ...current, youtubePeak: current.peak }
         : undefined,
   );
 }

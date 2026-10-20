@@ -53,6 +53,18 @@ export type NewsSources = {
   readonly me: string;
 };
 
+/** A message of the archive's news chat, written by an admin. */
+export type Announcement = {
+  readonly id: string;
+  readonly text: string;
+  readonly at: number;
+  /** When an admin last changed the text, if they did. */
+  readonly edited?: number;
+};
+
+/** Longest news message, as the database rules allow. */
+export const MAX_ANNOUNCEMENT = 1000;
+
 /** Most entries the inbox shows. */
 export const MAX_NEWS = 200;
 
@@ -120,6 +132,45 @@ export function newsItems(sources: NewsSources): readonly NewsItem[] {
   }
 
   return items.sort((a, b) => b.at - a.at).slice(0, MAX_NEWS);
+}
+
+/**
+ * Reads the news chat.
+ *
+ * @param value - what the database holds at `notenarchiv/announcements`
+ * @returns the well-formed messages, oldest first
+ */
+export function validAnnouncements(value: unknown): readonly Announcement[] {
+  const messages: Announcement[] = [];
+  for (const [id, raw] of Object.entries(asRecord(value))) {
+    const { text, at, edited } = asRecord(raw);
+    if (typeof text === "string" && text !== "" && typeof at === "number") {
+      messages.push({
+        id,
+        text,
+        at,
+        ...(typeof edited === "number" ? { edited } : {}),
+      });
+    }
+  }
+  return messages.sort((a, b) => a.at - b.at);
+}
+
+/**
+ * How much is new in the inbox since the visitor last opened it.
+ *
+ * @param sources - the archive's state, with the news chat
+ * @param lastSeen - when the inbox was opened last, 0 while unknown
+ * @returns the number of new entries and news messages
+ */
+export function unreadCount(
+  sources: NewsSources & { readonly announcements: readonly Announcement[] },
+  lastSeen: number,
+): number {
+  return lastSeen === 0
+    ? 0
+    : newsItems(sources).filter((item) => item.at > lastSeen).length +
+        sources.announcements.filter((message) => message.at > lastSeen).length;
 }
 
 /**

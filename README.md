@@ -38,8 +38,9 @@ füllt seine eigene Datenbank: [docs/neuer-verein.md](docs/neuer-verein.md).
 
 ## Verwaltung
 
-Stücke und Videos werden in der App gepflegt: **Profil -> Verwaltung**
-(`/verwaltung/`, gemeinsames Passwort). Dort auch die Meldungen der Musiker
+Stücke und Videos werden in der App gepflegt: **Profil -> Reiter Verwaltung**
+(gemeinsames Passwort, beim Namen über den Stift eingeben; auch unter
+`/verwaltung/`). Dort auch die Meldungen der Musiker
 mit "Erledigt". Die Stücke liegen nur in Firebase unter
 `notenarchiv/catalog`, daher ab und zu in der Firebase-Konsole **JSON
 exportieren** als Sicherung. Einrichtung und Details:
@@ -74,12 +75,20 @@ Unten in der Leiste, wie bei TikTok:
 - **＋** - ein neues Stück eintragen (`/neu/`). Das darf jeder mit Namen,
   auch mit Video. Ändern und Löschen bleibt der Verwaltung. Beim Tippen des
   Titels zeigt das Formular ähnliche Stücke, damit nichts doppelt kommt.
-- **Posteingang** - was die anderen tun: Likes, Bewertungen, Kommentare und
-  neue Stücke, die neuesten zuerst (`/posteingang/`). Die rote Zahl zählt,
-  was seit dem letzten Öffnen dazukam (gemerkt pro Gerät). Ein Tipp öffnet
-  das Stück in Play.
-- **Profil** - Name, Anzeige-Einstellungen, Auswertung und Verwaltung
-  (`/profil/`)
+- **Posteingang** - oben angeheftet der Chat **📣 News vom Archiv**: lesen
+  alle, schreiben und löschen nur angemeldete Verwalter. Darunter, was die
+  anderen tun: Likes, Bewertungen, Kommentare und neue Stücke, die neuesten
+  zuerst (`/posteingang/`). Gibt es Neues seit dem letzten Öffnen (gemerkt pro
+  Gerät), hat das Vereinslogo oben links in Play einen roten Punkt (Tipp
+  darauf öffnet den Posteingang), und die Leiste zeigt die Anzahl. Ein Tipp
+  auf einen Eintrag öffnet das Stück in Play.
+- **Profil** (`/profil/`) - oben der eigene Name (Stift zum Ändern) und ein
+  rundes Profilbild (nur auf diesem Gerät gespeichert, Initialen ohne Bild),
+  darunter wie viele Stücke man angesehen, bewertet und geliked hat, jeweils
+  mit Prozent der angezeigten Stücke. Darunter die Reiter **Anzeige** (welche
+  Stücke), **Wiedergabe** (Start des Ausschnitts, Ende des Stücks), **Mehr**
+  (Auswertung) und - nach Eingabe des Verwaltungs-Passworts beim Namen -
+  **Verwaltung**
 
 ## Bedienung in Play
 
@@ -212,6 +221,8 @@ Person bewerten.
 - `notenarchiv/news/{songId}/{personId}` - `{ like, rating, added }`:
   wann die Person geliked, bewertet oder hinzugefügt hat (für den
   Posteingang; zurückgenommen = gelöscht)
+- `notenarchiv/announcements/{id}` - `{ text, at }`: der News-Chat im
+  Posteingang, schreiben und löschen nur die Verwaltung
 - `notenarchiv/comments/{songId}/{commentId}` -
   `{ person, name, text, at }`, löschen nur die eigenen
 - `notenarchiv/reports/{songId}/{reportId}` - Meldungen ("Melden"-Button):

@@ -1,12 +1,19 @@
 # Verwaltung
 
-Unter **Profil -> Verwaltung** (`/verwaltung/`) pflegt der Verein seine
+Im **Profil** im Reiter **Verwaltung** (oder unter `/verwaltung/`) pflegt der Verein seine
 Stücke direkt in der App:
 
 - **Stücke** anlegen, ändern und löschen (Nummer, Titel, Sparte, Anlass, Solo,
   Komponist, Bearbeitung, Verlag, Nr. im Ordner, Sammlung)
-- **Video** verknüpfen: YouTube-Link einfügen, Startsekunde wählen, Vorschau.
-  Oder ankreuzen "Es gibt kein passendes Video".
+- **Video** verknüpfen: YouTube-Link einfügen. Das Video erscheint groß zum
+  Abspielen. Mit **"⏱ Aktuelle Stelle als Start"** wird die Stelle, an der das
+  Video gerade ist, zum Startpunkt des Ausschnitts in Play (oder die Sekunde
+  eintippen; ein Tipp auf **"↺ Start …"** springt hin). Ohne gewählten Start nimmt Play
+  den Höhepunkt von YouTube, den der nächtliche Job einträgt.
+  Den YouTube-Höhepunkt merkt sich der Katalog getrennt (`youtubePeak`), ein
+  gewählter Start überschreibt ihn nicht. Oder ankreuzen
+  "Es gibt kein passendes Video".
+- In der Liste spielt **▶** im Vorschaubild das Video ab dem Startpunkt ab.
 - **Meldungen** der Musiker lesen, das Stück direkt korrigieren und die
   Meldung als **erledigt** löschen
 
@@ -62,8 +69,10 @@ unter `admins` stehen.
 
 ### 5. Anmelden
 
-App öffnen -> **Profil -> Verwaltung** -> Passwort eingeben. Es
-erscheinen die Reiter **Stücke** und **Meldungen**.
+App öffnen -> **Profil** -> beim Namen auf den **Stift** tippen -> unten das
+**Verwaltungs-Passwort** eingeben -> **Speichern**. Neben dem Namen steht dann
+"🔧 Verwaltung", und unten erscheint der Reiter **Verwaltung** mit
+**Stücke** und **Meldungen**. Abmelden geht ebenfalls über den Stift.
 
 ### 6. Höhepunkt der Videos automatisch ermitteln
 
@@ -91,6 +100,11 @@ wenn im Repository 60 Tage lang nichts gepusht wurde. Dann unter **Actions
 -> Video-Details** wieder einschalten.
 
 ## Gut zu wissen
+
+- **News-Chat:** Oben im Posteingang steht "📣 News vom Archiv". Angemeldete
+  Verwalter sehen dort ein Feld zum Schreiben und bei jeder Nachricht
+  "Löschen". Alle anderen lesen nur. Neue Nachrichten lassen das Vereinslogo
+  in Play mit einem roten Punkt aufleuchten.
 
 - **Neue Stücke von Musikern:** Über das **＋** unten kann jeder ein Stück
   eintragen. Ändern oder löschen kann es danach nur die Verwaltung. Wer so ein

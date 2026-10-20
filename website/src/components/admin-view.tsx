@@ -9,11 +9,20 @@ import { useState, type ReactElement } from "react";
 import { deleteReport, signInAdmin, signOutAdmin, useAdmin } from "@/lib/admin";
 import { useArchive, type ArchiveState } from "@/lib/archive-store";
 import { CLUB } from "@/lib/club";
-import { filterSongs, HIDDEN_GENRES, NO_FILTER } from "@/lib/library";
+import {
+  byArchiveNumber,
+  filterSongs,
+  HIDDEN_GENRES,
+  NO_FILTER,
+} from "@/lib/library";
+import { mediaFor, previewUrl, snippetStart, thumbnailUrl } from "@/lib/media";
 import { commentsOf, timeAgo } from "@/lib/social";
 import type { Song } from "@/lib/song";
 import { ClubLogo } from "./club-logo";
 import { SongEditor } from "./song-editor";
+
+/** Seconds per minute, for showing where a video starts. */
+const SECONDS_PER_MINUTE = 60;
 
 /** Most pieces listed at once; a search narrows the rest down. */
 const MAX_LISTED = 100;
@@ -30,6 +39,15 @@ const SCOPE_LABELS: Readonly<Record<Scope, string>> = {
   withoutVideo: "Ohne Video",
   reported: "Mit Meldungen",
   hidden: "Ausgeblendete Sparten",
+};
+
+/** How the list is ordered. */
+type Order = "number" | "title";
+
+/** Labels of the orders, for the select. */
+const ORDER_LABELS: Readonly<Record<Order, string>> = {
+  number: "Archiv-Nummer",
+  title: "Titel A-Z",
 };
 
 /** The piece being edited: an existing one, or a new one (null). */
@@ -71,7 +89,7 @@ export function AdminView(): ReactElement {
       );
       break;
     case "signedIn":
-      content = <Workspace />;
+      content = <AdminWorkspace />;
       break;
     default:
       content = (
@@ -80,7 +98,7 @@ export function AdminView(): ReactElement {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
+    <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6">
       <div className="flex items-center gap-3">
         <ClubLogo className="size-10" />
         <h1 className="mr-auto text-2xl font-black tracking-tight">
@@ -153,7 +171,7 @@ function SignOutButton(): ReactElement {
 }
 
 /** The catalog and the reports, for a signed-in admin. */
-function Workspace(): ReactElement {
+export function AdminWorkspace(): ReactElement {
   const archive = useArchive();
   const [tab, setTab] = useState<Tab>("songs");
   const [editing, setEditing] = useState<Editing>(null);
@@ -233,6 +251,9 @@ function SongTable({
 }): ReactElement {
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<Scope>("all");
+  const [order, setOrder] = useState<Order>("number");
+  // The piece whose video plays in the list, one at a time.
+  const [playing, setPlaying] = useState<string | null>(null);
   const { catalog } = archive;
   const hasVideo = (song: Song) =>
     archive.media[song.id] !== undefined ||
@@ -245,9 +266,14 @@ function SongTable({
     reported: (song) => reportCount(song) > 0,
     hidden: (song) => song.genre !== null && HIDDEN_GENRES.has(song.genre),
   };
-  const found = filterSongs(catalog.songs, { ...NO_FILTER, query }).filter(
-    inScope[scope],
-  );
+  const found = filterSongs(catalog.songs, { ...NO_FILTER, query })
+    .filter(inScope[scope])
+    .sort(
+      order === "title"
+        ? (a, b) =>
+            a.title.localeCompare(b.title, "de") || byArchiveNumber(a, b)
+        : byArchiveNumber,
+    );
 
   return (
     <div className="space-y-3">
@@ -272,6 +298,18 @@ function SongTable({
             </option>
           ))}
         </select>
+        <select
+          value={order}
+          onChange={(event) => setOrder(event.target.value as Order)}
+          aria-label="Sortierung"
+          className="rounded-xl bg-white/5 px-3 py-2 outline-none"
+        >
+          {Object.entries(ORDER_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
         <button
           type="button"
           onClick={() => onEdit(null)}
@@ -286,38 +324,88 @@ function SongTable({
           ` - die ersten ${MAX_LISTED}, die Suche grenzt weiter ein`}
       </p>
       <ul className="divide-y divide-white/5 rounded-2xl bg-white/5">
-        {found.slice(0, MAX_LISTED).map((song) => (
-          <li key={song.id}>
-            <button
-              type="button"
-              onClick={() => onEdit(song)}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-white/5"
-            >
-              <span className="w-14 shrink-0 text-sm text-white/50 tabular-nums">
-                {song.number}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-semibold">
-                  {song.title}
-                </span>
-                <span className="block truncate text-sm text-white/50">
-                  {[song.genre, song.composer].filter(Boolean).join(" · ")}
-                </span>
-              </span>
-              {reportCount(song) > 0 && (
-                <span className="text-sm text-amber-300">
-                  ⚑ {reportCount(song)}
-                </span>
-              )}
-              <span
-                className={`text-sm ${hasVideo(song) ? "" : "text-white/30"}`}
-                title={hasVideo(song) ? "mit Video" : "ohne Video"}
-              >
-                {hasVideo(song) ? "🎬" : "–"}
-              </span>
-            </button>
-          </li>
-        ))}
+        {found.slice(0, MAX_LISTED).map((song) => {
+          const media = mediaFor(archive, song.id);
+          // At the highlight, as Play starts it; else at the entered second.
+          const start =
+            media === undefined ? 0 : snippetStart(media, "peak", 0);
+          return (
+            <li key={song.id}>
+              <div className="flex items-center gap-3 px-2 py-2">
+                {media === undefined ? (
+                  <span className="flex aspect-video w-24 shrink-0 items-center justify-center rounded-md bg-white/5 text-white/30">
+                    –
+                  </span>
+                ) : playing === song.id ? (
+                  // Plays in the thumbnail's place; the list keeps its rows.
+                  <span className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-md bg-black">
+                    <iframe
+                      src={previewUrl(media, start)}
+                      title={song.title}
+                      allow="autoplay; encrypted-media; picture-in-picture"
+                      allowFullScreen
+                      className="size-full"
+                    />
+                    <button
+                      type="button"
+                      aria-label="Video schließen"
+                      onClick={() => setPlaying(null)}
+                      className="absolute top-0.5 right-0.5 flex size-5 items-center justify-center rounded-full bg-black/70 text-[10px]"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    aria-label="Video abspielen"
+                    onClick={() => setPlaying(song.id)}
+                    className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-md bg-black"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- static export, no image optimization */}
+                    <img
+                      src={thumbnailUrl(media)}
+                      alt=""
+                      loading="lazy"
+                      className="size-full scale-[1.34] object-cover"
+                    />
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/30 text-lg">
+                      ▶
+                    </span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onEdit(song)}
+                  className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-white/5"
+                >
+                  <span className="w-14 shrink-0 text-sm text-white/50 tabular-nums">
+                    {song.number}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold">
+                      {song.title}
+                    </span>
+                    <span className="block truncate text-sm text-white/50">
+                      {[song.genre, song.composer].filter(Boolean).join(" · ")}
+                    </span>
+                  </span>
+                  {reportCount(song) > 0 && (
+                    <span className="text-sm text-amber-300">
+                      ⚑ {reportCount(song)}
+                    </span>
+                  )}
+                  {media !== undefined && (
+                    <span className="shrink-0 text-xs text-white/40 tabular-nums">
+                      ab {Math.floor(start / SECONDS_PER_MINUTE)}:
+                      {String(start % SECONDS_PER_MINUTE).padStart(2, "0")}
+                    </span>
+                  )}
+                </button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

@@ -1,5 +1,6 @@
 /**
- * The inbox: what the others liked, rated, wrote and added.
+ * The inbox: the archive's news chat, and what the others liked, rated,
+ * wrote and added.
  *
  * @module
  */
@@ -11,6 +12,7 @@ import { useArchive } from "@/lib/archive-store";
 import { markSeen, newsItems, useLastSeen, type NewsItem } from "@/lib/news";
 import { timeAgo } from "@/lib/social";
 import { ModeNotice } from "./mode-notice";
+import { NewsCard, NewsChat } from "./news-chat";
 
 /** Longest comment shown in full; the rest is cut. */
 const MAX_TEXT = 140;
@@ -38,7 +40,11 @@ export function InboxView(): ReactElement {
   const archive = useArchive();
   const lastSeen = useLastSeen();
   const items = newsItems(archive);
-  const newest = items[0]?.at ?? 0;
+  const newest = Math.max(
+    items[0]?.at ?? 0,
+    archive.announcements.at(-1)?.at ?? 0,
+  );
+  const [chatOpen, setChatOpen] = useState(false);
   // What was new when the page opened, kept while it is open.
   const [seenBefore, setSeenBefore] = useState<number | null>(null);
   const [now] = useState(() => Date.now());
@@ -53,7 +59,16 @@ export function InboxView(): ReactElement {
     }
   }, [archive.ready, newest, seenBefore]);
 
-  return (
+  return chatOpen ? (
+    <div className="mx-auto w-full max-w-xl px-4 py-6">
+      <NewsChat
+        messages={archive.announcements}
+        now={now}
+        seenBefore={seenBefore}
+        onBack={() => setChatOpen(false)}
+      />
+    </div>
+  ) : (
     <div className="mx-auto w-full max-w-xl space-y-4 px-4 py-6">
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="mr-auto text-2xl font-black tracking-tight">
@@ -61,6 +76,15 @@ export function InboxView(): ReactElement {
         </h1>
         <ModeNotice mode={archive.mode} />
       </div>
+
+      <NewsCard
+        messages={archive.announcements}
+        unread={archive.announcements.some(
+          (message) => seenBefore !== null && message.at > seenBefore,
+        )}
+        now={now}
+        onOpen={() => setChatOpen(true)}
+      />
 
       {archive.ready && items.length === 0 && (
         <p className="text-white/60">

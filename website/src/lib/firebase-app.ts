@@ -17,9 +17,20 @@ import {
 import { getDatabase, type Database } from "firebase/database";
 import { FIREBASE_CONFIG } from "./firebase-config";
 
-/** Reuses the running app or starts it the first time it is needed. */
+/** Name Firebase gives the app started without a name of its own. */
+const DEFAULT_APP = "[DEFAULT]";
+
+/**
+ * Reuses the running app or starts it the first time it is needed.
+ *
+ * @remarks
+ * Looks for the default app by name: the admin's second app (see admin.ts)
+ * may already be running, and must not be taken for this one.
+ */
 function firebaseApp(): FirebaseApp {
-  return getApps().length > 0 ? getApp() : initializeApp(FIREBASE_CONFIG);
+  return getApps().some((app) => app.name === DEFAULT_APP)
+    ? getApp()
+    : initializeApp(FIREBASE_CONFIG);
 }
 
 /**

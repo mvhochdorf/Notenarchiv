@@ -63,6 +63,9 @@
             "label": {
               ".validate": "newData.isString() && newData.val().length <= 200"
             },
+            "youtubePeak": {
+              ".validate": "newData.isNumber() && newData.val() >= 0"
+            },
             "$other": {
               ".validate": false
             }
@@ -228,6 +231,25 @@
         },
         "message": {
           ".validate": "newData.isString()"
+        }
+      },
+      "announcements": {
+        ".read": "auth != null",
+        "$id": {
+          ".write": "auth != null && root.child('notenarchiv/admins/' + auth.uid).val() === true",
+          ".validate": "newData.hasChildren(['text', 'at'])",
+          "text": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 1000"
+          },
+          "at": {
+            ".validate": "newData.isNumber() && newData.val() <= now"
+          },
+          "edited": {
+            ".validate": "newData.isNumber() && newData.val() <= now"
+          },
+          "$other": {
+            ".validate": false
+          }
         }
       }
     }

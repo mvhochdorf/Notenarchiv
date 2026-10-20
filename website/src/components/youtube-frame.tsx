@@ -11,6 +11,7 @@ import {
   useRef,
   type CSSProperties,
   type ReactElement,
+  type RefObject,
 } from "react";
 
 /**
@@ -90,6 +91,43 @@ export function YouTubeFrame({
   readonly onFrame: (frame: HTMLIFrameElement | null) => void;
 }): ReactElement {
   const frame = useRef<HTMLIFrameElement>(null);
+  usePlayerReports(frame, onInfo);
+
+  return (
+    <iframe
+      ref={(element) => {
+        frame.current = element;
+        onFrame(element);
+      }}
+      src={src}
+      title={title}
+      allow="autoplay; encrypted-media; picture-in-picture"
+      className="video-frame pointer-events-none absolute top-1/2 -translate-y-1/2"
+      style={
+        {
+          "--strip-width": STRIP_WIDTH,
+          "--full-width": FULL_WIDTH,
+          "--clearance": `${BUTTON_CLEARANCE_PX}px`,
+          "--crop": `${CROP_PX}px`,
+        } as CSSProperties
+      }
+    />
+  );
+}
+
+/**
+ * Listens to what the YouTube player in a frame reports.
+ *
+ * @param frame - the frame holding the player, its URL with `enablejsapi=1`
+ * @param onInfo - called with each report: state, time, length
+ * @remarks
+ * The player only reports once asked to, and only hears the question after
+ * it has loaded - so it is asked every half second until it answers.
+ */
+export function usePlayerReports(
+  frame: RefObject<HTMLIFrameElement | null>,
+  onInfo: (info: PlayerInfo) => void,
+): void {
   const report = useEffectEvent((info: PlayerInfo) => onInfo(info));
 
   useEffect(() => {
@@ -117,28 +155,7 @@ export function YouTubeFrame({
       clearInterval(timer);
       window.removeEventListener("message", handle);
     };
-  }, []);
-
-  return (
-    <iframe
-      ref={(element) => {
-        frame.current = element;
-        onFrame(element);
-      }}
-      src={src}
-      title={title}
-      allow="autoplay; encrypted-media; picture-in-picture"
-      className="video-frame pointer-events-none absolute top-1/2 -translate-y-1/2"
-      style={
-        {
-          "--strip-width": STRIP_WIDTH,
-          "--full-width": FULL_WIDTH,
-          "--clearance": `${BUTTON_CLEARANCE_PX}px`,
-          "--crop": `${CROP_PX}px`,
-        } as CSSProperties
-      }
-    />
-  );
+  }, [frame]);
 }
 
 /**

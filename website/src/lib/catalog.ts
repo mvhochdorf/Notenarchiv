@@ -46,6 +46,8 @@ export type StoredVideo = {
   readonly start: number;
   readonly duration?: number;
   readonly peak?: number;
+  /** YouTube's own highlight, see FixedMedia. */
+  readonly youtubePeak?: number;
   readonly label?: string;
 };
 
@@ -221,6 +223,9 @@ function storedVideo(video: FixedMedia): StoredVideo {
     start: Math.max(0, Math.floor(video.start)),
     ...(typeof video.duration === "number" ? { duration: video.duration } : {}),
     ...(typeof video.peak === "number" ? { peak: video.peak } : {}),
+    ...(typeof video.youtubePeak === "number"
+      ? { youtubePeak: video.youtubePeak }
+      : {}),
     ...(typeof video.label === "string" && video.label !== ""
       ? { label: video.label.slice(0, MAX_FIELD_LENGTH) }
       : {}),
@@ -238,6 +243,9 @@ function videoOf(value: unknown): FixedMedia | undefined {
           ? { duration: video.duration }
           : {}),
         ...(typeof video.peak === "number" ? { peak: video.peak } : {}),
+        ...(typeof video.youtubePeak === "number"
+          ? { youtubePeak: video.youtubePeak }
+          : {}),
         ...(typeof video.label === "string" ? { label: video.label } : {}),
         fixed: true,
       }

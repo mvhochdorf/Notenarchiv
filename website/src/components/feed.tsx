@@ -28,6 +28,7 @@ import { NO_RATING } from "@/lib/ratings";
 import { FEED_TABS, rankFeed, type FeedTab } from "@/lib/recommend";
 import { isShown, useSettings, type ShowFilter } from "@/lib/settings";
 import type { Song } from "@/lib/song";
+import { unreadCount, useLastSeen } from "@/lib/news";
 import { isMarked, markCount } from "@/lib/social";
 import { ClubLogo } from "./club-logo";
 import { CommentsSheet } from "./comments-sheet";
@@ -82,6 +83,7 @@ export function Feed(): ReactElement {
   const seed = useVisitSeed();
   const hashId = useHashSongId();
   const { show, playGenresOff } = useSettings();
+  const lastSeen = useLastSeen();
   const selection: Selection = { show, genresOff: playGenresOff };
   const [choice, setChoice] = useState<FeedChoice>({ tab: "forYou" });
   const [frozen, setFrozen] = useState<readonly Song[] | null>(null);
@@ -288,6 +290,7 @@ export function Feed(): ReactElement {
           choice={choice}
           onChoose={choose}
           queueLabel={queueLabel}
+          unread={unreadCount(archive, lastSeen) > 0}
           mode={archive.mode}
           genres={categories(
             archive.songs.filter((song) => isShown(show, archive, song)),
@@ -353,6 +356,7 @@ function FilterBar({
   choice,
   onChoose,
   queueLabel,
+  unread,
   mode,
   genres,
   onGenres,
@@ -362,6 +366,8 @@ function FilterBar({
   readonly onChoose: (choice: FeedChoice) => void;
   /** Where the order comes from when no tab is chosen. */
   readonly queueLabel: string | null;
+  /** Whether the inbox has something new; the logo then says so. */
+  readonly unread: boolean;
   readonly mode: ArchiveState["mode"];
   readonly genres: readonly Category[];
   readonly onGenres: (genresOff: readonly string[]) => void;
@@ -372,7 +378,20 @@ function FilterBar({
     <div className="absolute inset-x-0 top-0 z-10 space-y-2 px-4 pt-3">
       <div className="flex items-center gap-2">
         <span className="w-24">
-          <ClubLogo className="size-9 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]" />
+          <Link
+            href="/posteingang/"
+            aria-label={unread ? "Posteingang - es gibt Neues" : "Posteingang"}
+            className="relative inline-block"
+          >
+            <ClubLogo
+              className={`size-9 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] ${
+                unread ? "animate-pulse" : ""
+              }`}
+            />
+            {unread && (
+              <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-red-500 ring-2 ring-black" />
+            )}
+          </Link>
         </span>
         <nav className="flex flex-1 justify-center gap-5" aria-label="Auswahl">
           {FEED_TABS.map(({ tab, label }) => (

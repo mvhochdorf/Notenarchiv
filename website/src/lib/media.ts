@@ -28,6 +28,12 @@ export type FixedMedia = Media & {
    * replayed" graph; null if the video has none (too few views).
    */
   readonly peak?: number | null;
+  /**
+   * Where YouTube's "most replayed" stretch begins, as the nightly job
+   * found it - kept apart from {@link peak}, which an admin may have set to
+   * a start of their own.
+   */
+  readonly youtubePeak?: number;
   /** Set on every catalog link, to tell it from one linked in the app. */
   readonly fixed?: true;
 };
@@ -238,6 +244,27 @@ export function embedUrl(
     enablejsapi: "1",
     // YouTube loops a single video only as a playlist of itself.
     ...(loop ? { loop: "1", playlist: media.videoId } : {}),
+  });
+  return `https://www.youtube-nocookie.com/embed/${media.videoId}?${params}`;
+}
+
+/**
+ * A plain player for looking at a video, with YouTube's own controls.
+ *
+ * @param media - the video
+ * @param start - the second to start at
+ * @returns an embed URL on the privacy-enhanced YouTube domain
+ * @remarks
+ * For the admin page, where the video is checked rather than swiped past.
+ */
+export function previewUrl(media: Media, start: number): string {
+  const params = new URLSearchParams({
+    autoplay: "1",
+    start: String(start),
+    playsinline: "1",
+    rel: "0",
+    // Reports the playing time, for picking a start, see usePlayerReports.
+    enablejsapi: "1",
   });
   return `https://www.youtube-nocookie.com/embed/${media.videoId}?${params}`;
 }

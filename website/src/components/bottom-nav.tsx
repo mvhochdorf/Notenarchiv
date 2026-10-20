@@ -9,7 +9,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactElement } from "react";
 import { useArchive } from "@/lib/archive-store";
-import { newsItems, useLastSeen } from "@/lib/news";
+import { unreadCount, useLastSeen } from "@/lib/news";
 
 /** The tabs, by path; the one in the middle is the big "+". */
 const TABS = [
@@ -61,10 +61,7 @@ export function BottomNav(): ReactElement {
   const pathname = usePathname();
   const archive = useArchive();
   const lastSeen = useLastSeen();
-  const unread =
-    lastSeen === 0
-      ? 0
-      : newsItems(archive).filter((item) => item.at > lastSeen).length;
+  const unread = unreadCount(archive, lastSeen);
 
   return (
     <nav className="flex h-14 shrink-0 items-center border-t border-white/10 bg-black">
