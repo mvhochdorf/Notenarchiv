@@ -15,34 +15,9 @@
     "[markdown]": {
       "files.trimTrailingWhitespace": false
     },
-    "[typescript]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode",
-      "editor.tabSize": 2
-    },
-    "[typescriptreact]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode",
-      "editor.tabSize": 2
-    },
-    "[javascript]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode",
-      "editor.tabSize": 2
-    },
-    "[json]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode",
-      "editor.tabSize": 2
-    },
-    "typescript.tsdk": "website/node_modules/typescript/lib",
-    "typescript.enablePromptUseWorkspaceTsdk": true,
-    "editor.codeActionsOnSave": {
-      "source.organizeImports": "explicit"
-    },
     "git.openRepositoryInParentFolders": "always"
   },
   "extensions": {
-    "recommendations": [
-      "esbenp.prettier-vscode",
-      "dbaeumer.vscode-eslint",
-      "bradlc.vscode-tailwindcss"
-    ]
+    "recommendations": ["esbenp.prettier-vscode", "github.vscode-github-actions"]
   }
 }

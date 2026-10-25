@@ -3,42 +3,8 @@
 *.claude
 CLAUDE.md
 
-# Python
-__pycache__/
-*.pyc
-
-# Rust
-website/tools/excel-report-rs/target
-
-# website
-website/node_modules
-website/.next
-website/out
-website/build
-website/dist
-website/dist-app
-website/electron/bin
-website/.env*.local
-website/.env
-website/.vercel
-website/.DS_Store
-website/*.log
-website/*.tsbuildinfo
-website/next-env.d.ts
-website/docs/api
-website/.lighthouseci
-
-# other
-game_instructions
-
-# copies of the club's files, made by scripts/sync-verein.mjs from website/verein
-website/public/logo.png
-website/src/app/icon.png
-website/src/app/apple-icon.png
-
-# Startbestand eines neuen Vereins - wird einmal nach Firebase importiert,
-# danach liegen die Stücke nur noch dort (siehe docs/neuer-verein.md)
-website/verein/songs.json
-website/verein/youtube.json
-website/verein/added.json
-website/verein/catalog-import.json
+# Startbestand aus der Ersteinrichtung - liegt danach nur noch in Firebase
+verein/songs.json
+verein/youtube.json
+verein/added.json
+verein/catalog-import.json

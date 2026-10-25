@@ -1,0 +1,29 @@
+#------------------------------------------------------------------------------
+# Trägt jede Nacht Länge und Höhepunkt neu verlinkter Videos ein. Braucht das
+# Secret ADMIN_PASSWORD (Settings -> Secrets and variables -> Actions).
+#
+# Version und Repository wie in notenarchiv.yml.
+#------------------------------------------------------------------------------
+name: Video-Details
+
+on:
+  schedule:
+    # Jede Nacht um 3:17 Uhr UTC.
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: video-details
+  cancel-in-progress: false
+
+jobs:
+  details:
+    uses: timounger/notenarchiv-app/.github/workflows/verein-videos.yml@v1.0.0
+    with:
+      app-repository: timounger/notenarchiv-app
+      version: v1.0.0
+    secrets:
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}

@@ -1,0 +1,39 @@
+#------------------------------------------------------------------------------
+# Baut und veröffentlicht das Notenarchiv dieses Vereins auf GitHub Pages.
+#
+# Hier wird nur festgelegt, WELCHE Version des Notenarchivs verwendet wird.
+# Für ein Update beide Stellen mit "v1.0.0" auf die neue Version setzen
+# (welche es gibt und was neu ist: CHANGELOG.md im Notenarchiv) und
+# pushen.
+#
+# App-Repository: https://github.com/timounger/notenarchiv-app
+#------------------------------------------------------------------------------
+name: Notenarchiv
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      wartung:
+        description: "Wartungsmodus: nur die Wartungsseite veröffentlichen"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  seite:
+    uses: timounger/notenarchiv-app/.github/workflows/verein-seite.yml@v1.0.0
+    with:
+      app-repository: timounger/notenarchiv-app
+      version: v1.0.0
+      wartung: ${{ inputs.wartung || false }}
