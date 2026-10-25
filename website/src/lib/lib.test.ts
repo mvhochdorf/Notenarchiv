@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import {
   filterSongs,
+  HIDDEN_GENRES,
   NO_FILTER,
   popularity,
   sortSongs,
@@ -112,10 +113,14 @@ describe("snippetStart", () => {
 });
 
 describe("hidden categories", () => {
-  it("leaves chorales out of the app but keeps them in the data", () => {
-    expect(ALL_SONGS.some((song) => song.genre === "Choral")).toBe(true);
-    expect(SONGS.some((song) => song.genre === "Choral")).toBe(false);
-    expect(SONGS.length).toBeLessThan(ALL_SONGS.length);
+  it("leaves out exactly the categories the club hides", () => {
+    // Whatever the club's config.json hides - the example club hides none.
+    const hidden = (song: (typeof ALL_SONGS)[number]) =>
+      song.genre !== null && HIDDEN_GENRES.has(song.genre);
+    expect(SONGS.some(hidden)).toBe(false);
+    expect(SONGS).toHaveLength(
+      ALL_SONGS.filter((song) => !hidden(song)).length,
+    );
   });
 });
 

@@ -3,6 +3,7 @@
  *
  * @module
  */
+import { readFileSync } from "node:fs";
 import type { NextConfig } from "next";
 
 /**
@@ -16,7 +17,16 @@ import type { NextConfig } from "next";
  */
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
+/**
+ * Version of the app, from package.json - shown in the profile, so a club
+ * can tell which release it runs (see CHANGELOG.md).
+ */
+const version = (
+  JSON.parse(readFileSync("package.json", "utf8")) as { version: string }
+).version;
+
 const nextConfig: NextConfig = {
+  env: { NEXT_PUBLIC_APP_VERSION: version },
   // Emit plain HTML/CSS/JS into out/ - GitHub Pages cannot run a server.
   output: "export",
   basePath,

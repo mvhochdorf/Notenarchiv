@@ -17,7 +17,7 @@ betroffen.
 **Einschalten**
 
 1. [Firebase-Konsole](https://console.firebase.google.com) -> Projekt
-   **notenarchiv-mvhochdorf** -> **Realtime Database** -> Reiter **Daten**.
+   **notenarchiv-musterverein** -> **Realtime Database** -> Reiter **Daten**.
 2. Mit der Maus auf **notenarchiv** zeigen -> **+** (Kind hinzufügen).
 3. Schlüssel `maintenance` eintragen und darunter mit **+** zwei Einträge:
    - Schlüssel `on`, Wert `true`
@@ -41,10 +41,11 @@ Ein- und Ausschalten jeweils ein paar Minuten (wie ein normaler Build).
 
 **Einschalten**
 
-1. Auf GitHub im Repository **Actions** -> links **Deploy Website**.
+1. Auf GitHub im **Repository des Vereins** **Actions** -> links
+   **Notenarchiv**.
 2. Rechts **Run workflow** -> Häkchen bei **Wartungsmodus** setzen ->
    **Run workflow**.
-3. Nach ein paar Minuten zeigt `https://mvhochdorf.github.io/Notenarchiv/` die
+3. Nach ein paar Minuten zeigt `https://<konto>.github.io/<repository>/` die
    Wartungsseite.
 
 **Ausschalten**

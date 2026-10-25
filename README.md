@@ -4,6 +4,21 @@ Das Notenarchiv als Web-App im TikTok-Stil: durch die Stücke swipen,
 Ausschnitte anhören und mit 1-5 Sternen bewerten. Dazu eine Archiv-Liste mit
 Suche, Filter nach Sparte und Anlass und Sortierung nach Beliebtheit.
 
+## Versionen und Vereine
+
+Dieses Repository (**`notenarchiv-app`**) ist die **App**. Jeder Verein hat ein eigenes, kleines
+Repository mit nur seinem Ordner `verein/` und legt dort fest, **welche
+Version** der App er verwendet - wie ein Paket mit Versionsnummer. Beim Push
+holt GitHub diese Version, setzt den Vereinsordner ein und veröffentlicht
+die Seite.
+
+- Aktuelle Version: siehe `website/package.json` und
+  [CHANGELOG.md](CHANGELOG.md) (was neu ist, ob neue Datenbankregeln nötig
+  sind)
+- Neuen Verein einrichten: [docs/neuer-verein.md](docs/neuer-verein.md),
+  Vorlage im Ordner [vorlage-verein/](vorlage-verein/)
+- Neue Version veröffentlichen: [docs/versionen.md](docs/versionen.md)
+
 ## Starten
 
 1. `install.bat` (einmalig)
@@ -27,14 +42,16 @@ Tailwind, Firebase Realtime Database mit anonymem Login. Coding-Regeln:
 
 ## Vereinsordner
 
-Alles, was zum Musikverein Hochdorf gehört, liegt in `website/verein/`:
+Alles, was zu einem Verein gehört, liegt in `website/verein/` (hier ein
+neutraler Beispielverein):
 `config.json` (App-Name, Vereinsname, Firebase-Zugang, Verwaltungskonto,
 ausgeblendete Sparten, Standard-Einstellungen, Excel-Spalten, Such-Hinweise),
 und das Logo (daraus entstehen auch die Symbole). Die Stücke selbst liegen
 in Firebase.
 
-Ein anderer Verein kopiert das Repository, tauscht diesen Ordner aus und
-füllt seine eigene Datenbank: [docs/neuer-verein.md](docs/neuer-verein.md).
+Zum lokalen Testen mit den Daten eines Vereins dessen `config.json` und
+`logo.png` hier hineinkopieren (nicht committen). Veröffentlicht wird immer
+aus dem Repository des Vereins: [docs/neuer-verein.md](docs/neuer-verein.md).
 
 ## Verwaltung
 
@@ -177,7 +194,7 @@ Browser. Für gemeinsame Bewertungen, Likes, Kommentare und Video-Links (am
 besten mit dem Google-Konto des Vereins):
 
 1. [Firebase-Konsole](https://console.firebase.google.com) -> **Projekt
-   hinzufügen** (z. B. `notenarchiv-mvhochdorf`), Google Analytics nicht nötig.
+   hinzufügen** (z. B. `notenarchiv-musterverein`), Google Analytics nicht nötig.
 2. **Build -> Authentication -> Jetzt starten -> Anmeldemethode -> Anonym**
    aktivieren.
 3. **Build -> Realtime Database -> Datenbank erstellen**, Standort
@@ -190,7 +207,7 @@ besten mit dem Google-Konto des Vereins):
    `firebase` eintragen (die Werte sind nicht geheim, geschützt wird über die
    Regeln).
 6. **Authentication -> Einstellungen -> Autorisierte Domains**: `localhost`
-   ist schon da, `mvhochdorf.github.io` hinzufügen.
+   ist schon da, `<konto>.github.io` hinzufügen.
 
 Regeln später ändern: Datei anpassen und wieder in der Konsole einfügen,
 oder per CLI `npx firebase-tools login` und
@@ -246,6 +263,9 @@ gesperrt) - per Schalter in Firebase oder per GitHub Action, siehe
 
 ## Veröffentlichen
 
-`.github/workflows/github-ci.yml` baut bei jedem Push auf `main` und
-veröffentlicht auf GitHub Pages (in den Repo-Einstellungen unter Pages die
-Quelle "GitHub Actions" wählen).
+- `.github/workflows/github-ci.yml` prüft bei jedem Push auf `main` (Lint, Typen,
+  Tests, Build mit dem Beispielverein). Dieses Repository veröffentlicht
+  selbst keine Seite.
+- `.github/workflows/verein-seite.yml` und `verein-videos.yml` rufen die
+  Vereins-Repositorys auf: Seite bauen und veröffentlichen, nachts die
+  Video-Höhepunkte eintragen. Siehe [docs/neuer-verein.md](docs/neuer-verein.md).

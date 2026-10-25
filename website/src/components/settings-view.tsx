@@ -11,6 +11,7 @@ import { useRef, useState, type ReactElement } from "react";
 import { signInAdmin, signOutAdmin, useAdmin } from "@/lib/admin";
 import { identify, useArchive, type ArchiveState } from "@/lib/archive-store";
 import { removeAvatar, setAvatar, useAvatar } from "@/lib/avatar";
+import { CLUB } from "@/lib/club";
 import type { SnippetStart } from "@/lib/media";
 import { displayName, MAX_NAME_PART, personId } from "@/lib/person";
 import {
@@ -51,6 +52,9 @@ const TAB_LABELS: Readonly<Record<Tab, string>> = {
   more: "Mehr",
   admin: "Verwaltung",
 };
+
+/** The app's version, set from package.json at build time. */
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "";
 
 /** Percent of a whole. */
 const PERCENT = 100;
@@ -134,6 +138,9 @@ export function SettingsView(): ReactElement {
               Dann erscheint hier der Reiter „Verwaltung“.
             </p>
           )}
+          <p className="text-xs text-white/40">
+            {CLUB.appName} · Version {APP_VERSION}
+          </p>
           <p className="text-xs text-white/40">
             Einstellungen und Profilbild werden nur in diesem Browser
             gespeichert, dein Name verbindet deine Bewertungen auf allen

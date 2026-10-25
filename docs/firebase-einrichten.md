@@ -10,7 +10,7 @@ Was man braucht:
 
 - ein Google-Konto - am besten eines des Vereins, nicht ein privates oder ein
   Firmenkonto, damit das Projekt beim Verein bleibt
-- Zugriff auf dieses Repository (`mvhochdorf/Notenarchiv`)
+- Zugriff auf das Repository des Vereins (siehe [neuer-verein.md](neuer-verein.md))
 
 Bis die Schritte erledigt sind, läuft die App im **lokalen Modus**: Alles
 wird nur im jeweiligen Browser gespeichert. Oben in der App steht dann
@@ -23,9 +23,9 @@ wird nur im jeweiligen Browser gespeichert. Oben in der App steht dann
 1. <https://console.firebase.google.com> öffnen und mit dem Vereinskonto
    anmelden.
 2. **Projekt erstellen** (bzw. **Projekt hinzufügen**) anklicken.
-3. Projektname: `notenarchiv-mvhochdorf` eingeben.
+3. Projektname: `notenarchiv-musterverein` eingeben.
    Firebase hängt eventuell eine Zeichenfolge an die Projekt-ID an
-   (z. B. `notenarchiv-mvhochdorf-1a2b3`) - das ist in Ordnung.
+   (z. B. `notenarchiv-musterverein-1a2b3`) - das ist in Ordnung.
 4. Nutzungsbedingungen bestätigen, **Weiter**.
 5. **Google Analytics** ausschalten (wird nicht gebraucht), dann
    **Projekt erstellen**.
@@ -55,7 +55,7 @@ In der Liste steht jetzt bei "Anonym" der Status **Aktiviert**.
 4. **Im gesperrten Modus starten** wählen, **Aktivieren**.
 
 Oben auf der Datenbankseite steht jetzt die Adresse der Datenbank, etwa
-`https://notenarchiv-mvhochdorf-default-rtdb.europe-west1.firebasedatabase.app/`.
+`https://notenarchiv-musterverein-default-rtdb.europe-west1.firebasedatabase.app/`.
 
 ## Schritt 4 - Sicherheitsregeln eintragen
 
@@ -88,11 +88,11 @@ ganzen Dateiinhalt einfügen.
    ```js
    const firebaseConfig = {
      apiKey: "AIza...",
-     authDomain: "notenarchiv-mvhochdorf.firebaseapp.com",
+     authDomain: "notenarchiv-musterverein.firebaseapp.com",
      databaseURL:
-       "https://notenarchiv-mvhochdorf-default-rtdb.europe-west1.firebasedatabase.app",
-     projectId: "notenarchiv-mvhochdorf",
-     storageBucket: "notenarchiv-mvhochdorf.firebasestorage.app",
+       "https://notenarchiv-musterverein-default-rtdb.europe-west1.firebasedatabase.app",
+     projectId: "notenarchiv-musterverein",
+     storageBucket: "notenarchiv-musterverein.firebasestorage.app",
      messagingSenderId: "123456789012",
      appId: "1:123456789012:web:abc123...",
    };
@@ -115,7 +115,7 @@ erlaubt die Anmeldung nur von Webseiten, die hier eingetragen sind.
 
 1. Links **Sicherheit** -> **Authentication** -> oben Reiter
    **Einstellungen** -> links **Autorisierte Domains**.
-2. **Domain hinzufügen**: `mvhochdorf.github.io` eintragen (ohne `https://`
+2. **Domain hinzufügen**: `<konto>.github.io` eintragen (ohne `https://`
    und ohne `/Notenarchiv`), **Hinzufügen**.
 
 `localhost` steht dort schon (für das Testen am eigenen PC).
@@ -132,7 +132,7 @@ firebaseConfig") - oder selbst eintragen:
    ```json
    "firebase": {
      "apiKey": "AIza...",
-     "authDomain": "notenarchiv-mvhochdorf.firebaseapp.com",
+     "authDomain": "notenarchiv-musterverein.firebaseapp.com",
      ...
    }
    ```
@@ -165,7 +165,7 @@ nicht veröffentlicht) oder Schritt 7 (ein Wert falsch kopiert).
    **Source: GitHub Actions** wählen.
 3. Nach jedem Push baut GitHub die Seite neu (Reiter **Actions**, dauert ein
    paar Minuten). Danach ist sie erreichbar unter
-   <https://mvhochdorf.github.io/Notenarchiv/>.
+   `https://<konto>.github.io/<repository>/`.
 
 Diesen Link an die Musikerinnen und Musiker verschicken. Beim ersten Öffnen
 fragt die App nach Vor- und Nachname - bitte auf allen Geräten gleich
@@ -180,7 +180,7 @@ Regeln aus Schritt 4 und das Verwaltungs-Passwort. Damit er aber für nichts
 anderes taugt als die Anmeldung, wird er eingeschränkt:
 
 1. <https://console.cloud.google.com> öffnen, oben das Projekt (z. B.
-   `notenarchiv-mvhochdorf`) wählen.
+   `notenarchiv-musterverein`) wählen.
 2. **APIs & Dienste** -> **Anmeldedaten**.
 3. Den Schlüssel **Browser key (auto created by Firebase)** öffnen.
 4. **Anwendungseinschränkungen**: auf **Keine** lassen.

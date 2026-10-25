@@ -1,0 +1,44 @@
+{
+  "appName": "Notenarchiv",
+  "clubName": "Musterverein",
+  "description": "Das Notenarchiv zum Durchswipen, Anhören und Bewerten - für alle Musikerinnen und Musiker.",
+  "firebase": {
+    "apiKey": "",
+    "authDomain": "",
+    "databaseURL": "",
+    "projectId": "",
+    "storageBucket": "",
+    "messagingSenderId": "",
+    "appId": ""
+  },
+  "admin": {
+    "email": "verwaltung@example.org"
+  },
+  "hiddenGenres": [],
+  "defaults": {
+    "show": "withMusic",
+    "snippetStart": "peak",
+    "atEnd": "repeat"
+  },
+  "spreadsheet": {
+    "file": "Notenliste.xlsx",
+    "columns": {
+      "number": "Nummer",
+      "title": "Titel",
+      "genre": "Sparte",
+      "occasion": "Anlass",
+      "solo": "Solo",
+      "composer": "Komponist",
+      "arranger": "Bearbeitung",
+      "publisher": "Verlag",
+      "folderNumber": "Nr. im Ordner",
+      "collection": "Sammlung/Heft"
+    }
+  },
+  "search": {
+    "bandQuery": "Blasorchester",
+    "bandQueryByGenre": {},
+    "internalArrangers": [],
+    "spellings": {}
+  }
+}

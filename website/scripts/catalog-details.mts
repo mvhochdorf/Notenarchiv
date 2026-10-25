@@ -18,7 +18,7 @@
  * Videos described before `youtubePeak` existed got their peak from YouTube
  * too; for them it is copied over, without loading anything.
  *
- * Runs every night as a GitHub workflow (.github/workflows/video-details.yml)
+ * Runs every night from each club repository (.github/workflows/verein-videos.yml)
  * and by hand with `npm run catalog:details`. The password comes from the
  * environment variable `ADMIN_PASSWORD`, or is asked for. `--limit=20` stops
  * after twenty videos.

@@ -38,7 +38,7 @@ Speichern. "Link per E-Mail" bleibt aus.
 
 - **E-Mail:** genau die Adresse aus `website/verein/config.json` unter
   `admin.email`. Aktuell ist das
-  `verwaltung@notenarchiv-mvhochdorf.firebaseapp.com`. Es muss keine echte
+  `verwaltung@<projekt-id>.firebaseapp.com`. Es muss keine echte
   Adresse sein, es wird nie eine Mail verschickt. Mit einer echten Adresse
   des Vereins kann man aber später "Passwort vergessen" nutzen. Dann die
   Adresse auch in `config.json` eintragen.
@@ -78,11 +78,12 @@ App öffnen -> **Profil** -> beim Namen auf den **Stift** tippen -> unten das
 
 Beim Eintragen eines Videos kennt die App nur Link und Startsekunde. Den
 Höhepunkt ("Am häufigsten wiederholt" bei YouTube) darf der Browser nicht
-auslesen. Das übernimmt jede Nacht ein GitHub-Job
-(`.github/workflows/video-details.yml`). Er braucht dafür das
+auslesen. Das übernimmt jede Nacht ein GitHub-Job im Repository des
+Vereins (`.github/workflows/notenarchiv-videos.yml`, siehe
+[neuer-verein.md](neuer-verein.md)). Er braucht dafür das
 Verwaltungs-Passwort:
 
-1. Auf GitHub im Repository **Settings -> Secrets and variables ->
+1. Auf GitHub im **Repository des Vereins** **Settings -> Secrets and variables ->
    Actions -> New repository secret**.
 2. Name: `ADMIN_PASSWORD`, Secret: das Verwaltungs-Passwort -> **Add
    secret**.

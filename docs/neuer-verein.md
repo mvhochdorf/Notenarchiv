@@ -1,8 +1,24 @@
 # Notenarchiv für einen anderen Verein einrichten
 
-Das Notenarchiv ist so gebaut, dass jeder Verein es nutzen kann. Alles, was zu
-einem Verein gehört, liegt im Ordner **`website/verein/`** - der Rest ist für
-alle gleich.
+Das Notenarchiv ist so gebaut, dass jeder Verein es nutzen kann - wie ein
+Paket mit Versionsnummer. Jeder Verein bekommt ein **eigenes, kleines
+GitHub-Repository**, in dem nur steht, was zu ihm gehört, und **welche
+Version** der App er verwendet. Den App-Code selbst holt GitHub beim
+Veröffentlichen aus dem Notenarchiv-Repository.
+
+```
+verein-repository/
+├─ verein/
+│  ├─ config.json        Name, Firebase-Zugang, Einstellungen
+│  └─ logo.png           Vereinslogo
+├─ .github/workflows/
+│  ├─ notenarchiv.yml           baut die Seite - hier steht die Version
+│  └─ notenarchiv-videos.yml    nachts: Höhepunkte neuer Videos
+└─ README.md
+```
+
+Eine fertige Vorlage dafür liegt im Notenarchiv im Ordner
+[`vorlage-verein/`](../vorlage-verein/).
 
 ## Was im Vereinsordner liegt
 
@@ -14,17 +30,26 @@ alle gleich.
 Die **Stücke** liegen nicht im Repository, sondern in der Firebase-Datenbank
 des Vereins, und werden in der [Verwaltung](verwaltung.md) gepflegt. Hat der
 Verein eine Notenliste als Excel, füllt er die Datenbank einmal daraus
-(Schritt 5). Danach braucht er die Excel nicht mehr.
+(Schritt 6). Danach braucht er die Excel nicht mehr.
 
 ## Schritt für Schritt
 
-1. **Repository kopieren** - auf GitHub "Use this template" bzw. forken, oder
-   den Inhalt in ein neues Repository des Vereins übernehmen.
-2. **Eigenes Firebase-Projekt anlegen** - genau wie in
+1. **Vereins-Repository anlegen:** Auf GitHub ein neues Repository, z. B.
+   `notenarchiv-musterverein`. Den **Inhalt von `vorlage-verein/`**
+   hineinkopieren (auch den versteckten Ordner `.github`).
+2. **Workflow-Dateien anpassen:** In `.github/workflows/notenarchiv.yml` und
+   `notenarchiv-videos.yml`
+   - `KONTO/notenarchiv-app` durch das Repository des Notenarchivs ersetzen
+     (jeweils zweimal),
+   - bei `v1.0.0` die gewünschte Version eintragen (jeweils zweimal; die
+     neueste steht in [CHANGELOG.md](../CHANGELOG.md)).
+3. **Eigenes Firebase-Projekt anlegen** - genau wie in
    [firebase-einrichten.md](firebase-einrichten.md) beschrieben (Projekt,
    anonyme Anmeldung, Realtime Database, Regeln, Web-App, autorisierte
    Domain). Jeder Verein braucht sein **eigenes** Projekt.
-3. **`website/verein/config.json` anpassen:**
+   Die **Regeln** (`website/database.rules.json`) aus der Version nehmen,
+   die der Verein verwendet.
+4. **`verein/config.json` anpassen:**
    - `admin.email` - Adresse des gemeinsamen Verwaltungskontos (siehe
      [verwaltung.md](verwaltung.md))
    - `appName` - Name der App, z. B. `"Notenarchiv"` (erscheint im
@@ -53,11 +78,16 @@ Verein eine Notenliste als Excel, füllt er die Datenbank einmal daraus
      - `internalArrangers`: Nachnamen eigener Bearbeiter, die es auf
        YouTube nicht gibt
      - `spellings`: Titel, die auf YouTube anders geschrieben werden
-4. **Logo** `website/verein/logo.png` ersetzen (am besten quadratisch,
+5. **Logo** `verein/logo.png` ersetzen (am besten quadratisch,
    transparenter Hintergrund, 512 x 512 Pixel oder größer). Die Symbole
    entstehen daraus von selbst, siehe [logo.md](logo.md).
-5. **Stücke aus der Excel einlesen** (nur einmal, ohne Excel überspringen):
-   - Die Excel in den Hauptordner legen (Name wie in `spreadsheet.file`).
+6. **Stücke aus der Excel einlesen** (nur einmal, ohne Excel überspringen).
+   Dafür braucht man das Notenarchiv einmal am PC:
+   - Notenarchiv-Repository klonen und die verwendete Version auschecken
+     (`git checkout v1.0.0`), `install.bat` ausführen.
+   - `config.json` und `logo.png` des Vereins nach `website/verein/`
+     kopieren (nicht committen), die Excel in den Hauptordner legen (Name
+     wie in `spreadsheet.file`).
    - Im Ordner `website`:
      - `npm run import` - liest die Excel nach `verein/songs.json`
      - `npm run youtube` - sucht passende Videos nach `verein/youtube.json`
@@ -75,12 +105,27 @@ Verein eine Notenliste als Excel, füllt er die Datenbank einmal daraus
 
    Diese Dateien kommen nicht ins Repository (`.gitignore`) und können
    danach gelöscht werden.
-6. **Verwaltung einrichten**, siehe [verwaltung.md](verwaltung.md). Ohne
-   Excel legt man die Stücke dort einzeln an.
-7. **Testen** mit `start.bat`.
-8. **Veröffentlichen** - pushen und auf GitHub unter Settings -> Pages die
-   Quelle "GitHub Actions" wählen. Die Seite liegt dann unter
-   `https://<konto>.github.io/<repository>/`.
+7. **Veröffentlichen:** Im Vereins-Repository unter **Settings -> Pages**
+   die Quelle **"GitHub Actions"** wählen, dann pushen. Unter **Actions**
+   läuft "Notenarchiv"; danach liegt die Seite unter
+   `https://<konto>.github.io/<repository>/`. Diese Adresse in Firebase als
+   autorisierte Domain eintragen (siehe firebase-einrichten.md).
+8. **Verwaltung einrichten**, siehe [verwaltung.md](verwaltung.md) - dort
+   auch das Secret `ADMIN_PASSWORD` für den nächtlichen Job, diesmal im
+   **Vereins-Repository**. Ohne Excel legt man die Stücke in der App
+   einzeln an.
+
+## Auf eine neue Version wechseln
+
+1. In [CHANGELOG.md](../CHANGELOG.md) nachsehen, was neu ist und ob
+   **"Regeln neu veröffentlichen"** dabeisteht.
+2. Falls ja: `website/database.rules.json` **dieser** Version in der
+   Firebase-Konsole des Vereins einfügen und veröffentlichen.
+3. Im Vereins-Repository in beiden Workflow-Dateien die Version ändern
+   (jeweils beide Stellen), pushen. Fertig.
+
+Zurück auf eine frühere Version geht genauso. Die Version, die gerade läuft,
+steht in der App unter **Profil -> Mehr**.
 
 ## Was gleich bleibt
 

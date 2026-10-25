@@ -4,7 +4,7 @@ Das Logo erscheint in der App an vier Stellen: in **Play** oben links, im
 **Archiv** oben links, bei der **Namensabfrage** beim ersten Öffnen und in den
 **Profil** beim Namen.
 
-Aktuell: `website/verein/logo.png` (grünes Wappen, 1912).
+Aktuell: `website/verein/logo.png` (im Beispielverein eine Note).
 
 Es gibt nur diese eine Datei. Die Symbole für Browser-Tab und
 Handy-Startbildschirm (`icon.png`, 192 x 192, und `apple-icon.png`, 180 x 180
@@ -20,7 +20,7 @@ auf Schwarz) erzeugt `npm run verein` daraus automatisch, beim Start
 2. Die Datei `website/verein/logo.png` durch das neue Logo ersetzen (gleicher
    Name).
 3. Seite neu starten (`start.bat`). Nach dem nächsten Push ist das Logo
-   auch auf <https://mvhochdorf.github.io/Notenarchiv/>.
+   auch auf `https://<konto>.github.io/<repository>/`.
 
 ## Tipps
 

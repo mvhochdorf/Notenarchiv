@@ -1,0 +1,88 @@
+#------------------------------------------------------------------------------
+# Baut die Seite eines Vereins aus einer bestimmten Version des Notenarchivs
+# und veröffentlicht sie auf GitHub Pages - aufgerufen aus dem Repository des
+# Vereins (Vorlage: vorlage-verein/.github/workflows/notenarchiv.yml).
+#
+# Das Vereins-Repository enthält nur seinen Ordner verein/ (config.json,
+# logo.png). Dieser Workflow holt den App-Code in der angegebenen Version,
+# legt den Vereinsordner hinein, baut und veröffentlicht.
+#------------------------------------------------------------------------------
+name: Vereinsseite
+
+on:
+  workflow_call:
+    inputs:
+      app-repository:
+        description: "Repository des Notenarchivs, z. B. konto/notenarchiv-app"
+        type: string
+        required: true
+      version:
+        description: "Version des Notenarchivs, z. B. v1.0.0"
+        type: string
+        required: true
+      wartung:
+        description: "Nur die Wartungsseite veröffentlichen"
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Notenarchiv holen
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.app-repository }}
+          ref: ${{ inputs.version }}
+          path: app
+
+      - name: Vereinsordner holen
+        uses: actions/checkout@v7
+        with:
+          path: club
+
+      - name: Vereinsordner einsetzen
+        run: |
+          test -f club/verein/config.json || { echo "::error::verein/config.json fehlt im Vereins-Repository"; exit 1; }
+          cp -r club/verein/. app/website/verein/
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: app/website/package-lock.json
+
+      - name: Install dependencies
+        working-directory: app/website
+        run: npm ci
+
+      # Must run BEFORE the build: it reports the sub path the site is served
+      # from (e.g. "/notenarchiv-musterverein"), which the build needs.
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v6
+
+      - name: Build Next.js (static export)
+        working-directory: app/website
+        run: npm run build
+        env:
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          NEXT_PUBLIC_MAINTENANCE: ${{ inputs.wartung && 'true' || 'false' }}
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: app/website/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
