@@ -263,9 +263,11 @@ gesperrt) - per Schalter in Firebase oder per GitHub Action, siehe
 
 ## Veröffentlichen
 
-- `.github/workflows/github-ci.yml` prüft bei jedem Push auf `main` (Lint, Typen,
-  Tests, Build mit dem Beispielverein). Dieses Repository veröffentlicht
-  selbst keine Seite.
+- `.github/workflows/github-ci.yml` prüft bei jedem Push auf `main` (Lint,
+  Typen, Tests, Build mit dem Beispielverein) und legt bei einer neuen
+  Versionsnummer in `website/package.json` automatisch Tag und Release an
+  (siehe [docs/versionen.md](docs/versionen.md)). Eine Seite veröffentlicht
+  dieses Repository nicht.
 - `.github/workflows/verein-seite.yml` und `verein-videos.yml` rufen die
   Vereins-Repositorys auf: Seite bauen und veröffentlichen, nachts die
   Video-Höhepunkte eintragen. Siehe [docs/neuer-verein.md](docs/neuer-verein.md).

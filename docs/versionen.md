@@ -3,28 +3,25 @@
 Die Vereine verwenden das Notenarchiv in einer festen Version - einem
 **Git-Tag** wie `v1.2.0` in diesem Repository. Eine neue Version entsteht so:
 
-1. **Änderungen fertig** auf `main` (die Prüfung unter **Actions** ist
-   grün).
-2. **Versionsnummer** in `website/package.json` erhöhen (`"version":
+1. **Versionsnummer** in `website/package.json` erhöhen (`"version":
    "1.2.0"`), nach den Regeln oben in [CHANGELOG.md](../CHANGELOG.md):
    - nur Fehler behoben -> letzte Stelle (`1.1.0` -> `1.1.1`)
    - neue Funktionen -> mittlere Stelle (`1.1.1` -> `1.2.0`)
    - Vereine müssen mehr tun als Regeln veröffentlichen -> erste Stelle
      (`1.2.0` -> `2.0.0`)
-3. **CHANGELOG.md** ergänzen: neuer Abschnitt `## 1.2.0` oben, was neu ist.
+2. **CHANGELOG.md** ergänzen: neuer Abschnitt `## 1.2.0` oben, was neu ist.
    Hat sich `website/database.rules.json` seit der letzten Version geändert,
    **"Regeln neu veröffentlichen."** dazuschreiben.
-4. Committen und pushen.
-5. **Tag setzen** - das ist die eigentliche Veröffentlichung:
+3. Committen und auf `main` pushen.
 
-   ```bash
-   git tag v1.2.0
-   git push origin v1.2.0
-   ```
+Den Rest macht GitHub (Workflow "Prüfen und veröffentlichen"): erst die
+Prüfung (Lint, Typen, Tests, Build), und wenn sie grün ist und es zur
+Versionsnummer noch keinen Tag gibt, legt er **Tag `v1.2.0`** und ein
+**Release** an - mit dem Abschnitt `## 1.2.0` aus dem CHANGELOG als Text.
+Zu sehen unter **Releases** rechts auf der Startseite des Repositorys.
 
-   Optional auf GitHub unter **Releases -> Draft a new release** den Tag
-   wählen und den Text aus dem CHANGELOG einfügen - dann sehen die Vereine
-   die Version auch dort.
+Pushes ohne neue Versionsnummer werden nur geprüft, nicht veröffentlicht.
+Schlägt die Prüfung fehl, wird auch nichts veröffentlicht.
 
 Ab jetzt kann jeder Verein `v1.2.0` in seinen Workflow-Dateien eintragen.
 
