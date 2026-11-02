@@ -12,7 +12,7 @@ Dieses Repository enthält nur, was zum Musikverein Hochdorf gehört:
 Die App selbst kommt aus
 [timounger/notenarchiv-app](https://github.com/timounger/notenarchiv-app),
 in der Version, die in den beiden Workflow-Dateien steht (aktuell
-`v1.0.0`). Dort stehen auch Bedienung, Verwaltung, Firebase-Einrichtung und
+`v1.0.1`). Dort stehen auch Bedienung, Verwaltung, Firebase-Einrichtung und
 Wartungsmodus.
 
 Die Stücke liegen in Firebase (`notenarchiv-mvhochdorf`) unter
@@ -33,7 +33,7 @@ kopieren (dort nicht committen), dann `install.bat` und `start.bat`.
 2. Falls ja: `website/database.rules.json` dieser Version in der
    Firebase-Konsole unter Realtime Database -> Regeln einfügen und
    veröffentlichen.
-3. In beiden Workflow-Dateien jeweils **beide** Stellen `v1.0.0` auf die
+3. In beiden Workflow-Dateien jeweils **beide** Stellen `v1.0.1` auf die
    neue Version ändern, committen, pushen. GitHub baut die Seite neu
    (Reiter **Actions**).
 

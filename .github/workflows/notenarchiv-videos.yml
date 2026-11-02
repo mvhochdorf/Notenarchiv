@@ -21,9 +21,9 @@ concurrency:
 
 jobs:
   details:
-    uses: timounger/notenarchiv-app/.github/workflows/verein-videos.yml@v1.0.0
+    uses: timounger/notenarchiv-app/.github/workflows/verein-videos.yml@v1.0.1
     with:
       app-repository: timounger/notenarchiv-app
-      version: v1.0.0
+      version: v1.0.1
     secrets:
       ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}

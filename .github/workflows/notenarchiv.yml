@@ -2,7 +2,7 @@
 # Baut und veröffentlicht das Notenarchiv dieses Vereins auf GitHub Pages.
 #
 # Hier wird nur festgelegt, WELCHE Version des Notenarchivs verwendet wird.
-# Für ein Update beide Stellen mit "v1.0.0" auf die neue Version setzen
+# Für ein Update beide Stellen mit "v1.0.1" auf die neue Version setzen
 # (welche es gibt und was neu ist: CHANGELOG.md im Notenarchiv) und
 # pushen.
 #
@@ -32,8 +32,8 @@ concurrency:
 
 jobs:
   seite:
-    uses: timounger/notenarchiv-app/.github/workflows/verein-seite.yml@v1.0.0
+    uses: timounger/notenarchiv-app/.github/workflows/verein-seite.yml@v1.0.1
     with:
       app-repository: timounger/notenarchiv-app
-      version: v1.0.0
+      version: v1.0.1
       wartung: ${{ inputs.wartung || false }}
